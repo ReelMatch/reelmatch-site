@@ -1870,7 +1870,6 @@ function bootApp() {
   document.getElementById('info-api-base').textContent = API_BASE;
   buildThemeGrid('settings-theme-grid');
   initTimezoneSettings();
-  renderEmailTemplateList();
   startDashAutoRefresh();
   window.addEventListener('resize', () => {
     if (state.section === 'users') {
