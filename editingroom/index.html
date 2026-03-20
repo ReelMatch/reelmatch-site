@@ -3267,7 +3267,7 @@ function renderBannedTable(rows) {
             <tr>
               <td>${esc(b.email || '—')}</td>
               <td style="font-family:monospace;font-size:12px">${esc(b.ip_address || '—')}</td>
-              <td>${esc(b.phone || '—')}</td>
+              <td>${esc(b.phone_number || '—')}</td>
               <td style="color:var(--text-muted)">${esc(b.reason || '—')}</td>
               <td style="color:var(--text-muted)">${esc(b.banned_by_username || '—')}</td>
               <td style="color:var(--text-muted);font-size:12px;white-space:nowrap">${formatDate(b.created_at)}</td>
