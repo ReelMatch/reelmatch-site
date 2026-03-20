@@ -1,0 +1,1422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Editing Room — ReelMatch Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── THEME VARIABLES ───────────────────────────────────────────── */
+    :root {
+      --bg-primary:  #0e0c0a;
+      --bg-surface:  #1a1612;
+      --bg-hover:    #221e1a;
+      --text-primary:#f5f0e8;
+      --text-muted:  #6b6560;
+      --accent:      #c0392b;
+      --accent-dim:  rgba(192,57,43,0.15);
+      --border:      rgba(245,240,232,0.1);
+      --sidebar-w:   240px;
+    }
+
+    /* ─── RESET & BASE ──────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    button { cursor: pointer; font-family: inherit; }
+    input, textarea, select {
+      font-family: inherit;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+    select option { background: var(--bg-surface); }
+    h1,h2,h3,h4 { font-family: 'DM Serif Display', serif; font-weight: 400; }
+
+    /* ─── LOGIN SCREEN ───────────────────────────────────────────────── */
+    #login-screen {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg-primary);
+      z-index: 1000;
+    }
+    .login-box {
+      width: 380px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 48px 40px;
+      text-align: center;
+    }
+    .login-logo { font-family: 'DM Serif Display', serif; font-size: 28px; font-weight: 400; margin-bottom: 4px; }
+    .login-logo span { color: var(--accent); }
+    .login-subtitle {
+      font-family: 'DM Serif Display', serif;
+      font-style: italic;
+      color: var(--text-muted);
+      font-size: 15px;
+      margin-bottom: 36px;
+      letter-spacing: .3px;
+    }
+    .login-box input {
+      width: 100%;
+      margin-bottom: 12px;
+      padding: 11px 14px;
+      background: var(--bg-primary);
+    }
+    .btn-login {
+      width: 100%;
+      padding: 12px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: .3px;
+      margin-top: 4px;
+      transition: opacity .2s;
+    }
+    .btn-login:hover { opacity: .85; }
+    .btn-login:disabled { opacity: .5; cursor: not-allowed; }
+    .login-error {
+      margin-top: 14px;
+      color: var(--accent);
+      font-size: 13px;
+      min-height: 18px;
+    }
+
+    /* ─── APP SHELL ──────────────────────────────────────────────────── */
+    #app { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ─── SIDEBAR ────────────────────────────────────────────────────── */
+    #sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-brand {
+      padding: 24px 20px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand-logo { font-family: 'DM Serif Display', serif; font-size: 20px; }
+    .brand-logo span { color: var(--accent); }
+    .brand-sub {
+      font-family: 'DM Serif Display', serif;
+      font-style: italic;
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 20px;
+      color: var(--text-muted);
+      font-size: 13.5px;
+      font-weight: 500;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: all .15s;
+      user-select: none;
+    }
+    .nav-item:hover { color: var(--text-primary); background: var(--bg-hover); }
+    .nav-item.active {
+      color: var(--text-primary);
+      border-left-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .nav-icon { width: 18px; text-align: center; font-size: 16px; flex-shrink: 0; }
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+    }
+    .sidebar-user-email {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .theme-dots {
+      display: flex; gap: 5px; flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .theme-dot {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform .15s;
+      flex-shrink: 0;
+    }
+    .theme-dot:hover { transform: scale(1.2); }
+    .theme-dot.active { border-color: var(--text-primary); }
+    .btn-logout {
+      width: 100%;
+      padding: 8px;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all .2s;
+    }
+    .btn-logout:hover { color: var(--accent); border-color: var(--accent); }
+
+    /* ─── MAIN CONTENT ───────────────────────────────────────────────── */
+    #main-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 32px 36px;
+    }
+    .section { display: none; }
+    .section.active { display: block; }
+    .section-header {
+      margin-bottom: 28px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .section-title { font-size: 26px; color: var(--text-primary); }
+    .section-subtitle { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+
+    /* ─── STAT CARDS ─────────────────────────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .stat-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 10px;
+      padding: 24px 20px;
+    }
+    .stat-number {
+      font-family: 'DM Serif Display', serif;
+      font-size: 36px;
+      color: var(--text-primary);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+
+    /* ─── TABLES ─────────────────────────────────────────────────────── */
+    .table-wrap {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: var(--bg-hover); }
+    th {
+      padding: 11px 16px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 12px 16px;
+      font-size: 13.5px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-primary);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: var(--bg-hover); }
+
+    /* ─── BADGES ─────────────────────────────────────────────────────── */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    .badge-admin    { background: rgba(192,57,43,.2);  color: #e57373; }
+    .badge-mod      { background: rgba(59,130,246,.2); color: #60a5fa; }
+    .badge-user     { background: rgba(107,101,96,.2); color: var(--text-muted); }
+    .badge-verified { background: rgba(46,125,50,.2);  color: #81c784; }
+    .badge-pending  { background: rgba(215,158,11,.2); color: #fcd34d; }
+
+    /* ─── BUTTONS ────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      border: none;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: .8; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-ghost   { background: var(--bg-hover); color: var(--text-primary); border: 1px solid var(--border); }
+    .btn-danger  { background: rgba(192,57,43,.2); color: #e57373; border: 1px solid rgba(192,57,43,.3); }
+    .btn-success { background: rgba(46,125,50,.2); color: #81c784; border: 1px solid rgba(46,125,50,.3); }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+    /* ─── SEARCH BAR ─────────────────────────────────────────────────── */
+    .search-bar {
+      display: flex; gap: 10px;
+      margin-bottom: 20px;
+    }
+    .search-bar input { flex: 1; max-width: 380px; }
+
+    /* ─── CARD LIST ──────────────────────────────────────────────────── */
+    .card-list { display: flex; flex-direction: column; gap: 12px; }
+    .card-item {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-item-info h3 { font-size: 16px; font-family: 'DM Serif Display', serif; margin-bottom: 4px; }
+    .card-item-info p  { font-size: 12px; color: var(--text-muted); }
+    .card-item-actions { display: flex; gap: 8px; }
+
+    /* ─── EDITOR MODAL ───────────────────────────────────────────────── */
+    #editor-modal {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.7);
+      z-index: 500;
+      align-items: stretch;
+    }
+    #editor-modal.open { display: flex; }
+    .editor-panel {
+      background: var(--bg-primary);
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    .editor-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .editor-topbar h2 { font-size: 18px; }
+    .editor-topbar-actions { display: flex; gap: 10px; }
+    .editor-body {
+      flex: 1; display: flex; overflow: hidden;
+    }
+    .editor-left {
+      width: 50%; display: flex; flex-direction: column;
+      border-right: 1px solid var(--border);
+      padding: 20px;
+      gap: 12px;
+    }
+    .editor-right {
+      width: 50%;
+      display: flex; flex-direction: column;
+      padding: 20px;
+    }
+    .editor-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      margin-bottom: 6px;
+    }
+    .editor-left input { width: 100%; }
+    #editor-html {
+      flex: 1;
+      width: 100%;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      resize: none;
+      line-height: 1.6;
+      padding: 12px;
+      background: var(--bg-surface);
+    }
+    .var-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .var-chip {
+      padding: 4px 10px;
+      background: var(--accent-dim);
+      border: 1px solid rgba(192,57,43,.3);
+      border-radius: 20px;
+      font-size: 12px;
+      color: #e57373;
+      font-family: monospace;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .var-chip:hover { background: rgba(192,57,43,.3); }
+    .preview-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 10px; }
+    #editor-preview {
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    /* ─── ACTIVITY FEED ──────────────────────────────────────────────── */
+    .activity-section { margin-top: 32px; }
+    .activity-section h2 { font-size: 18px; margin-bottom: 16px; }
+    .activity-list { display: flex; flex-direction: column; gap: 1px; }
+    .activity-item {
+      background: var(--bg-surface);
+      padding: 12px 16px;
+      display: flex; gap: 12px; align-items: flex-start;
+      border-bottom: 1px solid var(--border);
+    }
+    .activity-item:first-child { border-radius: 10px 10px 0 0; }
+    .activity-item:last-child  { border-bottom: none; border-radius: 0 0 10px 10px; }
+    .activity-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent); margin-top: 5px; flex-shrink: 0;
+    }
+    .activity-text { font-size: 13px; }
+    .activity-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    /* ─── PAGINATION ─────────────────────────────────────────────────── */
+    .pagination {
+      display: flex; gap: 6px; align-items: center;
+      margin-top: 20px; justify-content: flex-end;
+    }
+    .pagination button {
+      padding: 6px 12px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 13px;
+      transition: all .15s;
+    }
+    .pagination button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .pagination button:disabled { opacity: .4; cursor: default; }
+    .pagination .pg-current {
+      padding: 6px 12px; font-size: 13px; color: var(--text-muted);
+    }
+
+    /* ─── SETTINGS ───────────────────────────────────────────────────── */
+    .settings-section { max-width: 680px; }
+    .settings-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .settings-card h3 { font-size: 17px; margin-bottom: 16px; }
+    .settings-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-row-label { font-size: 13.5px; }
+    .settings-row-value { font-size: 13px; color: var(--text-muted); }
+    .theme-grid {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px;
+    }
+    .theme-swatch {
+      display: flex; flex-direction: column; align-items: center; gap: 5px;
+      cursor: pointer;
+    }
+    .theme-swatch-circle {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 2px solid transparent;
+      transition: transform .15s;
+    }
+    .theme-swatch:hover .theme-swatch-circle { transform: scale(1.1); }
+    .theme-swatch.active .theme-swatch-circle { border-color: var(--text-primary); }
+    .theme-swatch-name { font-size: 10px; color: var(--text-muted); text-align: center; }
+
+    /* ─── LOADING SPINNER ────────────────────────────────────────────── */
+    .loading {
+      display: flex; align-items: center; justify-content: center;
+      padding: 60px;
+      color: var(--text-muted);
+      font-size: 13px;
+      gap: 10px;
+    }
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── EMPTY STATE ────────────────────────────────────────────────── */
+    .empty {
+      padding: 60px 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    /* ─── TOAST NOTIFICATIONS ────────────────────────────────────────── */
+    #toast-container {
+      position: fixed; bottom: 24px; right: 24px;
+      display: flex; flex-direction: column; gap: 8px;
+      z-index: 9999;
+      pointer-events: none;
+    }
+    .toast {
+      padding: 12px 18px;
+      border-radius: 8px;
+      font-size: 13.5px;
+      font-weight: 500;
+      max-width: 340px;
+      pointer-events: all;
+      animation: slideIn .2s ease;
+      box-shadow: 0 4px 20px rgba(0,0,0,.4);
+    }
+    .toast-error   { background: #2d1010; border: 1px solid #5a1a1a; color: #e57373; }
+    .toast-success { background: #0d2010; border: 1px solid #1a4a1a; color: #81c784; }
+    .toast-info    { background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-primary); }
+    @keyframes slideIn { from { transform: translateX(110%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(110%); opacity: 0; } }
+
+    /* ─── CONFIRM DIALOG ─────────────────────────────────────────────── */
+    #confirm-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.6);
+      z-index: 600;
+      align-items: center; justify-content: center;
+    }
+    #confirm-overlay.open { display: flex; }
+    .confirm-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      max-width: 360px;
+      width: 90%;
+      text-align: center;
+    }
+    .confirm-box h3 { font-size: 18px; margin-bottom: 10px; }
+    .confirm-box p  { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; }
+    .confirm-actions { display: flex; gap: 10px; justify-content: center; }
+
+    /* ─── ROLE SELECT ────────────────────────────────────────────────── */
+    .role-select {
+      padding: 4px 8px;
+      font-size: 12px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════ LOGIN ══════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">Reel<span>Match</span></div>
+    <div class="login-subtitle">The Editing Room</div>
+    <input type="email" id="login-email" placeholder="admin@reelmatch.live" autocomplete="email" />
+    <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" />
+    <button class="btn-login" id="login-btn" onclick="doLogin()">Sign in</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ APP ════════ -->
+<div id="app" style="display:none">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">Reel<span>Match</span></div>
+      <div class="brand-sub">The Editing Room</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" data-section="dashboard"  onclick="navigate('dashboard')">
+        <span class="nav-icon">🎬</span> Dashboard
+      </div>
+      <div class="nav-item" data-section="users"     onclick="navigate('users')">
+        <span class="nav-icon">👥</span> Users
+      </div>
+      <div class="nav-item" data-section="emails"    onclick="navigate('emails')">
+        <span class="nav-icon">📧</span> Email Templates
+      </div>
+      <div class="nav-item" data-section="reports"   onclick="navigate('reports')">
+        <span class="nav-icon">🚩</span> Reports
+      </div>
+      <div class="nav-item" data-section="movies"    onclick="navigate('movies')">
+        <span class="nav-icon">🎥</span> Movies
+      </div>
+      <div class="nav-item" data-section="settings"  onclick="navigate('settings')">
+        <span class="nav-icon">⚙️</span> Settings
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user-email" id="sidebar-email">—</div>
+      <div class="theme-dots" id="sidebar-theme-dots"></div>
+      <button class="btn-logout" onclick="doLogout()">Sign out</button>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main id="main-content">
+
+    <!-- ── DASHBOARD ──────────────────────────────────────────────── -->
+    <div class="section active" id="sec-dashboard">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Dashboard</h1>
+          <div class="section-subtitle">Platform overview</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="loadDashboard()">↺ Refresh</button>
+      </div>
+      <div class="stats-grid" id="stats-grid">
+        <div class="loading"><div class="spinner"></div> Loading stats…</div>
+      </div>
+      <div class="activity-section">
+        <h2>Recent Activity</h2>
+        <div id="activity-list"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- ── USERS ──────────────────────────────────────────────────── -->
+    <div class="section" id="sec-users">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Users</h1>
+          <div class="section-subtitle">Search and manage accounts</div>
+        </div>
+      </div>
+      <div class="search-bar">
+        <input type="text" id="user-search" placeholder="Search by username or email…" onkeydown="if(event.key==='Enter')searchUsers()" />
+        <button class="btn btn-primary btn-sm" onclick="searchUsers()">Search</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadUsers()">All Users</button>
+      </div>
+      <div id="users-table-wrap">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- ── EMAIL TEMPLATES ────────────────────────────────────────── -->
+    <div class="section" id="sec-emails">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Email Templates</h1>
+          <div class="section-subtitle">Edit transactional email content</div>
+        </div>
+      </div>
+      <div class="card-list" id="email-template-list"></div>
+    </div>
+
+    <!-- ── REPORTS ────────────────────────────────────────────────── -->
+    <div class="section" id="sec-reports">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Content Reports</h1>
+          <div class="section-subtitle">Pending moderation queue</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="loadReports()">↺ Refresh</button>
+      </div>
+      <div id="reports-table-wrap">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- ── MOVIES ─────────────────────────────────────────────────── -->
+    <div class="section" id="sec-movies">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Movies</h1>
+          <div class="section-subtitle">Cached movie catalogue</div>
+        </div>
+      </div>
+      <div class="search-bar">
+        <input type="text" id="movie-search" placeholder="Search movies…" onkeydown="if(event.key==='Enter')searchMovies()" />
+        <button class="btn btn-primary btn-sm" onclick="searchMovies()">Search</button>
+      </div>
+      <div id="movies-table-wrap">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- ── SETTINGS ───────────────────────────────────────────────── -->
+    <div class="section" id="sec-settings">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Settings</h1>
+          <div class="section-subtitle">Platform configuration</div>
+        </div>
+      </div>
+      <div class="settings-section">
+
+        <div class="settings-card">
+          <h3>Colour Theme</h3>
+          <div class="theme-grid" id="settings-theme-grid"></div>
+        </div>
+
+        <div class="settings-card">
+          <h3>Platform Info</h3>
+          <div class="settings-row">
+            <span class="settings-row-label">API Base URL</span>
+            <span class="settings-row-value" id="info-api-base">—</span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-row-label">Admin Account</span>
+            <span class="settings-row-value" id="info-admin-email">—</span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-row-label">Seed Ratings</span>
+            <span class="settings-row-value">9,507,922 (MovieLens 25M)</span>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <h3>Data Operations</h3>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Pre-cache trending movies</div>
+              <div class="settings-row-value" style="font-size:12px;margin-top:2px;">Fetches current trending from TMDB and caches them</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="triggerPrecache()">Run</button>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Latest import job status</div>
+              <div class="settings-row-value" id="import-job-status">—</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="loadImportStatus()">Check</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══════════════ EDITOR MODAL ═════════════════════════════════════ -->
+<div id="editor-modal">
+  <div class="editor-panel">
+    <div class="editor-topbar">
+      <h2 id="editor-title">Edit Template</h2>
+      <div class="editor-topbar-actions">
+        <button class="btn btn-ghost" onclick="closeEditor()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveTemplate()">Save Template</button>
+      </div>
+    </div>
+    <div class="editor-body">
+      <div class="editor-left">
+        <div>
+          <div class="editor-label">Subject Line</div>
+          <input type="text" id="editor-subject" />
+        </div>
+        <div>
+          <div class="editor-label">Available Variables — click to insert</div>
+          <div class="var-chips" id="var-chips"></div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;min-height:0">
+          <div class="editor-label">HTML Body</div>
+          <textarea id="editor-html"></textarea>
+        </div>
+      </div>
+      <div class="editor-right">
+        <div class="preview-label">Live Preview</div>
+        <iframe id="editor-preview" frameborder="0"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ CONFIRM DIALOG ═══════════════════════════════════ -->
+<div id="confirm-overlay">
+  <div class="confirm-box">
+    <h3 id="confirm-title">Are you sure?</h3>
+    <p id="confirm-message">This action cannot be undone.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok-btn" onclick="confirmOk()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ TOAST CONTAINER ══════════════════════════════════ -->
+<div id="toast-container"></div>
+
+<!-- ═══════════════════════════════════ JAVASCRIPT ═══════════════════ -->
+<script>
+/* ─── CONFIGURATION ─────────────────────────────────────────────────── */
+const API_BASE = 'https://web-production-d11a6.up.railway.app';
+
+/* ─── THEMES ─────────────────────────────────────────────────────────── */
+const THEMES = [
+  { id:'reelmatch',  name:'ReelMatch',   bg:'#0e0c0a', surface:'#1a1612', text:'#f5f0e8', muted:'#6b6560', accent:'#c0392b', border:'rgba(245,240,232,0.1)' },
+  { id:'midnight',   name:'Midnight',    bg:'#0a0d14', surface:'#111827', text:'#e8eaf6', muted:'#6b7280', accent:'#3b82f6', border:'rgba(232,234,246,0.1)' },
+  { id:'forest',     name:'Forest',      bg:'#0a110a', surface:'#111a11', text:'#e8f5e9', muted:'#6b7c6b', accent:'#2e7d32', border:'rgba(232,245,233,0.1)' },
+  { id:'burgundy',   name:'Burgundy',    bg:'#0f0a0a', surface:'#1a1010', text:'#fdf0f0', muted:'#7c6060', accent:'#8b1a1a', border:'rgba(253,240,240,0.1)' },
+  { id:'slate',      name:'Slate',       bg:'#0d0f12', surface:'#161b22', text:'#e6edf3', muted:'#8b949e', accent:'#58a6ff', border:'rgba(230,237,243,0.1)' },
+  { id:'amber',      name:'Amber',       bg:'#0f0e0a', surface:'#1a1810', text:'#fdf8e8', muted:'#7c7060', accent:'#d97706', border:'rgba(253,248,232,0.1)' },
+  { id:'plum',       name:'Plum',        bg:'#0e0a12', surface:'#1a1020', text:'#f3e8fd', muted:'#7c6080', accent:'#9333ea', border:'rgba(243,232,253,0.1)' },
+  { id:'rose',       name:'Rose',        bg:'#120a0d', surface:'#201016', text:'#fde8ef', muted:'#80606b', accent:'#e11d48', border:'rgba(253,232,239,0.1)' },
+  { id:'teal',       name:'Teal',        bg:'#0a1212', surface:'#101e1e', text:'#e8fafa', muted:'#607c7c', accent:'#0d9488', border:'rgba(232,250,250,0.1)' },
+  { id:'light',      name:'Light',       bg:'#f5f0e8', surface:'#ffffff', text:'#0e0c0a', muted:'#6b6560', accent:'#c0392b', border:'rgba(14,12,10,0.1)'    },
+];
+
+/* ─── STATE ──────────────────────────────────────────────────────────── */
+let state = {
+  token:        null,
+  user:         null,
+  section:      'dashboard',
+  usersPage:    1,
+  userQuery:    '',
+  activeTheme:  localStorage.getItem('admin_theme') || 'reelmatch',
+  editingTemplate: null,
+};
+
+/* ─── THEME SYSTEM ───────────────────────────────────────────────────── */
+function applyTheme(id) {
+  const t = THEMES.find(x => x.id === id) || THEMES[0];
+  const r = document.documentElement.style;
+  r.setProperty('--bg-primary',  t.bg);
+  r.setProperty('--bg-surface',  t.surface);
+  r.setProperty('--bg-hover',    lighten(t.surface, 8));
+  r.setProperty('--text-primary',t.text);
+  r.setProperty('--text-muted',  t.muted);
+  r.setProperty('--accent',      t.accent);
+  r.setProperty('--accent-dim',  hexToRgba(t.accent, .15));
+  r.setProperty('--border',      t.border);
+  state.activeTheme = id;
+  localStorage.setItem('admin_theme', id);
+  document.querySelectorAll('.theme-dot, .theme-swatch').forEach(el => {
+    el.classList.toggle('active', el.dataset.tid === id);
+  });
+}
+function lighten(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.min(255, ((n >> 16) & 0xff) + amt);
+  const g = Math.min(255, ((n >> 8)  & 0xff) + amt);
+  const b = Math.min(255, ((n)       & 0xff) + amt);
+  return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+}
+function hexToRgba(hex, a) {
+  const n = parseInt(hex.replace('#',''), 16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+
+function buildThemeDots(containerId) {
+  const c = document.getElementById(containerId);
+  if (!c) return;
+  c.innerHTML = THEMES.map(t => `
+    <span class="theme-dot${t.id===state.activeTheme?' active':''}"
+      data-tid="${t.id}"
+      title="${t.name}"
+      style="background:${t.accent}"
+      onclick="applyTheme('${t.id}')"></span>
+  `).join('');
+}
+function buildThemeGrid(containerId) {
+  const c = document.getElementById(containerId);
+  if (!c) return;
+  c.innerHTML = THEMES.map(t => `
+    <div class="theme-swatch${t.id===state.activeTheme?' active':''}" data-tid="${t.id}" onclick="applyTheme('${t.id}')">
+      <div class="theme-swatch-circle" style="background:linear-gradient(135deg,${t.bg} 50%,${t.accent} 50%)"></div>
+      <div class="theme-swatch-name">${t.name}</div>
+    </div>
+  `).join('');
+}
+
+/* ─── TOAST ──────────────────────────────────────────────────────────── */
+function toast(msg, type='info') {
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => {
+    el.style.animation = 'slideOut .2s ease forwards';
+    setTimeout(() => el.remove(), 200);
+  }, 4000);
+}
+
+/* ─── CONFIRM DIALOG ─────────────────────────────────────────────────── */
+let _confirmCallback = null;
+function showConfirm(title, msg, cb) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-message').textContent = msg;
+  _confirmCallback = cb;
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+function closeConfirm() { document.getElementById('confirm-overlay').classList.remove('open'); }
+function confirmOk() { closeConfirm(); if (_confirmCallback) _confirmCallback(); }
+
+/* ─── API HELPER ─────────────────────────────────────────────────────── */
+async function api(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (state.token) headers['Authorization'] = `Bearer ${state.token}`;
+  Object.assign(headers, opts.headers || {});
+  try {
+    const res = await fetch(`${API_BASE}${path}`, { ...opts, headers });
+    if (res.status === 401) { doLogout(); return null; }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    if (res.status === 204) return null;
+    return await res.json();
+  } catch (e) {
+    throw e;
+  }
+}
+
+/* ─── AUTH ───────────────────────────────────────────────────────────── */
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-password').value;
+  const btn   = document.getElementById('login-btn');
+  const err   = document.getElementById('login-error');
+  err.textContent = '';
+  if (!email || !pass) { err.textContent = 'Please enter email and password.'; return; }
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    const data = await api('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password: pass }),
+    });
+    if (!data) return;
+    if (data.user?.role !== 'admin') {
+      err.textContent = 'Access denied — admin account required.';
+      btn.disabled = false; btn.textContent = 'Sign in';
+      return;
+    }
+    state.token = data.access_token;
+    state.user  = data.user;
+    localStorage.setItem('admin_token', state.token);
+    localStorage.setItem('admin_user',  JSON.stringify(state.user));
+    bootApp();
+  } catch (e) {
+    err.textContent = e.message || 'Login failed.';
+    btn.disabled = false; btn.textContent = 'Sign in';
+  }
+}
+
+function doLogout() {
+  localStorage.removeItem('admin_token');
+  localStorage.removeItem('admin_user');
+  state.token = null; state.user = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-password').value = '';
+  document.getElementById('login-btn').disabled = false;
+  document.getElementById('login-btn').textContent = 'Sign in';
+}
+
+function checkAuth() {
+  const t = localStorage.getItem('admin_token');
+  const u = localStorage.getItem('admin_user');
+  if (!t) return false;
+  state.token = t;
+  try { state.user = JSON.parse(u); } catch {}
+  return true;
+}
+
+function bootApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('sidebar-email').textContent = state.user?.email || '';
+  document.getElementById('info-admin-email').textContent = state.user?.email || '';
+  document.getElementById('info-api-base').textContent = API_BASE;
+  buildThemeDots('sidebar-theme-dots');
+  buildThemeGrid('settings-theme-grid');
+  renderEmailTemplateList();
+  navigate(state.section);
+}
+
+/* ─── NAVIGATION ─────────────────────────────────────────────────────── */
+function navigate(section) {
+  state.section = section;
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.section === section);
+  });
+  document.querySelectorAll('.section').forEach(el => {
+    el.classList.toggle('active', el.id === `sec-${section}`);
+  });
+  switch (section) {
+    case 'dashboard': loadDashboard(); break;
+    case 'users':     loadUsers();     break;
+    case 'reports':   loadReports();   break;
+    case 'movies':    loadMovies();    break;
+  }
+}
+
+/* ─── DASHBOARD ──────────────────────────────────────────────────────── */
+async function loadDashboard() {
+  const grid = document.getElementById('stats-grid');
+  const actList = document.getElementById('activity-list');
+  grid.innerHTML = `<div class="loading" style="grid-column:1/-1"><div class="spinner"></div> Loading…</div>`;
+  actList.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+
+  // Parallel fetch
+  const [searchRes, moviesRes, modStats, feedRes] = await Promise.allSettled([
+    api('/users/search?q=&page_size=100'),
+    api('/movies/search?q=avengers&page_size=1'),
+    api('/moderation/reports/stats'),
+    api('/users/feed'),
+  ]);
+
+  const userCount   = searchRes.status   === 'fulfilled' && Array.isArray(searchRes.value)  ? searchRes.value.length  : '—';
+  const movieCount  = moviesRes.status   === 'fulfilled' && moviesRes.value?.total_results   ? moviesRes.value.total_results.toLocaleString() : '1,361+';
+  const reportCount = modStats.status    === 'fulfilled' && modStats.value?.by_status?.pending ? modStats.value.by_status.pending : 0;
+
+  const cards = [
+    { label: 'Total Users',     value: typeof userCount === 'number' ? userCount.toLocaleString() : userCount,  note: 'registered accounts'   },
+    { label: 'Movies Cached',   value: movieCount,        note: 'in Supabase movies table' },
+    { label: 'Seed Ratings',    value: '9,507,922',       note: 'MovieLens 25M dataset'    },
+    { label: 'Pending Reports', value: String(reportCount), note: 'awaiting moderation'    },
+  ];
+
+  grid.innerHTML = cards.map(c => `
+    <div class="stat-card">
+      <div class="stat-number">${c.value}</div>
+      <div class="stat-label">${c.label}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${c.note}</div>
+    </div>
+  `).join('');
+
+  // Activity feed
+  if (feedRes.status === 'fulfilled' && Array.isArray(feedRes.value) && feedRes.value.length) {
+    const events = feedRes.value.slice(0, 10);
+    actList.innerHTML = `<div class="activity-list">` + events.map(e => `
+      <div class="activity-item">
+        <div class="activity-dot"></div>
+        <div>
+          <div class="activity-text">${formatEvent(e)}</div>
+          <div class="activity-meta">${formatDate(e.created_at)}</div>
+        </div>
+      </div>
+    `).join('') + `</div>`;
+  } else {
+    actList.innerHTML = `<div class="empty">No recent activity found.</div>`;
+  }
+}
+
+function formatEvent(e) {
+  const type = (e.event_type || '').replace(/_/g, ' ');
+  const user = e.username || e.user_id?.slice(0,8) || 'someone';
+  const movie = e.data?.title || e.movie_title || '';
+  if (movie) return `<strong>${user}</strong> ${type}: ${movie}`;
+  return `<strong>${user}</strong> ${type}`;
+}
+function formatDate(s) {
+  if (!s) return '';
+  try { return new Date(s).toLocaleString(); } catch { return s; }
+}
+
+/* ─── USERS ──────────────────────────────────────────────────────────── */
+async function loadUsers() {
+  state.userQuery = '';
+  document.getElementById('user-search').value = '';
+  await fetchUsers('');
+}
+async function searchUsers() {
+  const q = document.getElementById('user-search').value.trim();
+  state.userQuery = q;
+  state.usersPage = 1;
+  await fetchUsers(q);
+}
+async function fetchUsers(query) {
+  const wrap = document.getElementById('users-table-wrap');
+  wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Loading users…</div>`;
+  try {
+    const data = await api(`/users/search?q=${encodeURIComponent(query)}&page_size=50`);
+    if (!data) return;
+    renderUsersTable(data);
+  } catch (e) {
+    wrap.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+    toast(e.message, 'error');
+  }
+}
+
+function renderUsersTable(users) {
+  const wrap = document.getElementById('users-table-wrap');
+  if (!users.length) {
+    wrap.innerHTML = `<div class="empty">No users found.</div>`; return;
+  }
+  wrap.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Username</th><th>Email</th><th>Role</th>
+          <th>Verified</th><th>Joined</th><th>Actions</th>
+        </tr></thead>
+        <tbody>
+          ${users.map(u => `
+            <tr>
+              <td><strong>${esc(u.username)}</strong></td>
+              <td style="color:var(--text-muted)">${esc(u.email||'—')}</td>
+              <td>${roleBadge(u.role)}</td>
+              <td>${u.is_verified ? '<span class="badge badge-verified">Yes</span>' : '<span class="badge badge-pending">No</span>'}</td>
+              <td style="color:var(--text-muted);font-size:12px">${formatDate(u.created_at)}</td>
+              <td>
+                <div style="display:flex;gap:6px;align-items:center">
+                  <select class="role-select" onchange="changeRole('${u.id||u.username}','${esc(u.username)}',this.value)" title="Change role">
+                    <option value="user"${u.role==='user'?' selected':''}>user</option>
+                    <option value="moderator"${u.role==='moderator'?' selected':''}>moderator</option>
+                    <option value="admin"${u.role==='admin'?' selected':''}>admin</option>
+                  </select>
+                  <button class="btn btn-danger btn-sm" onclick="suspendUser('${u.id||u.username}','${esc(u.username)}')">Suspend</button>
+                </div>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+async function changeRole(userId, username, newRole) {
+  try {
+    await api(`/users/${username}/role`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role: newRole }),
+    });
+    toast(`${username} role updated to ${newRole}`, 'success');
+  } catch (e) {
+    toast(`Role change not yet supported by API: ${e.message}`, 'error');
+  }
+}
+async function suspendUser(userId, username) {
+  showConfirm('Suspend User', `Suspend @${username}? They will be unable to log in.`, async () => {
+    try {
+      await api(`/users/${username}/suspend`, { method: 'POST' });
+      toast(`${username} suspended`, 'success');
+      loadUsers();
+    } catch (e) {
+      toast(`Suspend not yet supported by API: ${e.message}`, 'error');
+    }
+  });
+}
+
+function roleBadge(role) {
+  if (role === 'admin')     return '<span class="badge badge-admin">admin</span>';
+  if (role === 'moderator') return '<span class="badge badge-mod">mod</span>';
+  return '<span class="badge badge-user">user</span>';
+}
+
+/* ─── EMAIL TEMPLATES ────────────────────────────────────────────────── */
+const EMAIL_TEMPLATES = [
+  {
+    code: 'verification',
+    name: 'Email Verification',
+    subject: 'Verify your ReelMatch account',
+    variables: ['{{username}}', '{{verification_url}}', '{{app_name}}'],
+    file: 'verification.html',
+    desc: 'Sent when a new user registers',
+  },
+  {
+    code: 'welcome',
+    name: 'Welcome Email',
+    subject: 'Welcome to ReelMatch, {{username}}!',
+    variables: ['{{username}}', '{{app_name}}'],
+    file: 'welcome.html',
+    desc: 'Sent after email is verified',
+  },
+  {
+    code: 'reset_password',
+    name: 'Password Reset',
+    subject: 'Reset your ReelMatch password',
+    variables: ['{{username}}', '{{reset_url}}', '{{app_name}}'],
+    file: 'reset_password.html',
+    desc: 'Sent when a user requests a password reset',
+  },
+];
+
+function renderEmailTemplateList() {
+  const list = document.getElementById('email-template-list');
+  if (!list) return;
+  list.innerHTML = EMAIL_TEMPLATES.map(t => `
+    <div class="card-item">
+      <div class="card-item-info">
+        <h3>${t.name}</h3>
+        <p>Subject: <em>${esc(t.subject)}</em> &nbsp;·&nbsp; ${t.desc}</p>
+        <p style="margin-top:4px">Variables: ${t.variables.map(v => `<code style="font-size:11px;background:var(--bg-hover);padding:1px 5px;border-radius:3px;color:var(--text-muted)">${v}</code>`).join(' ')}</p>
+      </div>
+      <div class="card-item-actions">
+        <button class="btn btn-ghost" onclick="openEditor('${t.code}')">Edit</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function openEditor(code) {
+  const tpl = EMAIL_TEMPLATES.find(t => t.code === code);
+  if (!tpl) return;
+  state.editingTemplate = tpl;
+
+  document.getElementById('editor-title').textContent = `Edit: ${tpl.name}`;
+  document.getElementById('editor-subject').value = tpl.subject;
+
+  // Build variable chips
+  document.getElementById('var-chips').innerHTML = tpl.variables.map(v => `
+    <span class="var-chip" onclick="insertVar('${v}')">${v}</span>
+  `).join('');
+
+  // Try to load template HTML from GitHub Pages path
+  const htmlArea = document.getElementById('editor-html');
+  htmlArea.value = '<!-- Loading template… -->';
+
+  // Try fetching from relative path (works on GitHub Pages at /editingroom/)
+  try {
+    const basePath = window.location.pathname.replace(/\/[^/]*$/, '');
+    const r = await fetch(`${basePath}/../templates/email/${tpl.file}`);
+    if (r.ok) {
+      htmlArea.value = await r.text();
+    } else {
+      htmlArea.value = `<!-- Could not load ${tpl.file} from server -->\n<!-- Paste your template HTML here -->\n`;
+    }
+  } catch {
+    htmlArea.value = `<!-- Paste your ${tpl.name} template HTML here -->\n<!-- Variables: ${tpl.variables.join(', ')} -->\n`;
+  }
+
+  updatePreview();
+  htmlArea.addEventListener('input', updatePreview);
+  document.getElementById('editor-modal').classList.add('open');
+}
+
+function updatePreview() {
+  const html = document.getElementById('editor-html').value;
+  const iframe = document.getElementById('editor-preview');
+  try {
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+    doc.open(); doc.write(html); doc.close();
+  } catch {}
+}
+
+function insertVar(v) {
+  const ta = document.getElementById('editor-html');
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  ta.value = ta.value.slice(0, s) + v + ta.value.slice(e);
+  ta.selectionStart = ta.selectionEnd = s + v.length;
+  ta.focus();
+  updatePreview();
+}
+
+function closeEditor() {
+  document.getElementById('editor-modal').classList.remove('open');
+  document.getElementById('editor-html').removeEventListener('input', updatePreview);
+  state.editingTemplate = null;
+}
+
+async function saveTemplate() {
+  if (!state.editingTemplate) return;
+  const tpl  = state.editingTemplate;
+  const subj = document.getElementById('editor-subject').value.trim();
+  const html = document.getElementById('editor-html').value;
+  try {
+    await api(`/admin/email-templates/${tpl.code}`, {
+      method: 'PUT',
+      body: JSON.stringify({ code: tpl.code, subject: subj, html_body: html }),
+    });
+    toast(`${tpl.name} saved successfully`, 'success');
+    closeEditor();
+  } catch (e) {
+    toast(`Save failed: ${e.message}`, 'error');
+  }
+}
+
+/* ─── REPORTS ────────────────────────────────────────────────────────── */
+async function loadReports() {
+  const wrap = document.getElementById('reports-table-wrap');
+  wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Loading reports…</div>`;
+  try {
+    const data = await api('/moderation/reports');
+    if (!data) return;
+    renderReportsTable(data);
+  } catch (e) {
+    wrap.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+    toast(e.message, 'error');
+  }
+}
+
+function renderReportsTable(reports) {
+  const wrap = document.getElementById('reports-table-wrap');
+  if (!reports.length) {
+    wrap.innerHTML = `<div class="empty" style="padding:40px;text-align:center;color:var(--text-muted)">✓ No pending reports</div>`;
+    return;
+  }
+  wrap.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Type</th><th>Content Preview</th><th>Reporter</th>
+          <th>Reason</th><th>Date</th><th>Actions</th>
+        </tr></thead>
+        <tbody>
+          ${reports.map(r => `
+            <tr>
+              <td><span class="badge badge-pending">${esc(r.content_type)}</span></td>
+              <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);font-size:12px">
+                ${esc(r.content_preview || r.content_id || '—')}
+              </td>
+              <td>${esc(r.reporter_username || r.reporter_id?.slice(0,8) || '—')}</td>
+              <td>${esc(r.reason)}</td>
+              <td style="font-size:12px;color:var(--text-muted)">${formatDate(r.created_at)}</td>
+              <td>
+                <div style="display:flex;gap:6px">
+                  <button class="btn btn-ghost btn-sm" onclick="resolveReport('${r.id}','dismissed')">Dismiss</button>
+                  <button class="btn btn-danger btn-sm" onclick="resolveReport('${r.id}','actioned')">Action</button>
+                </div>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+async function resolveReport(id, status) {
+  const label = status === 'actioned' ? 'action (delete content)' : 'dismiss';
+  showConfirm('Resolve Report', `Are you sure you want to ${label} this report?`, async () => {
+    try {
+      await api(`/moderation/reports/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status }),
+      });
+      toast(`Report ${status}`, 'success');
+      loadReports();
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  });
+}
+
+/* ─── MOVIES ─────────────────────────────────────────────────────────── */
+async function loadMovies() {
+  document.getElementById('movie-search').value = '';
+  await fetchMovies('trending');
+}
+async function searchMovies() {
+  const q = document.getElementById('movie-search').value.trim() || 'a';
+  await fetchMovies(q);
+}
+async function fetchMovies(q) {
+  const wrap = document.getElementById('movies-table-wrap');
+  wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Loading movies…</div>`;
+  try {
+    const data = await api(`/movies/search?q=${encodeURIComponent(q)}&page_size=20`);
+    if (!data) return;
+    const movies = data.results || data || [];
+    renderMoviesTable(movies);
+  } catch (e) {
+    wrap.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+    toast(e.message, 'error');
+  }
+}
+
+function renderMoviesTable(movies) {
+  const wrap = document.getElementById('movies-table-wrap');
+  if (!movies.length) { wrap.innerHTML = `<div class="empty">No movies found.</div>`; return; }
+  wrap.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Title</th><th>Year</th><th>TMDB ID</th>
+          <th>Rating</th><th>Actions</th>
+        </tr></thead>
+        <tbody>
+          ${movies.map(m => `
+            <tr>
+              <td>
+                <div style="display:flex;align-items:center;gap:10px">
+                  ${m.poster_path ? `<img src="https://image.tmdb.org/t/p/w45${m.poster_path}" style="width:30px;height:45px;object-fit:cover;border-radius:3px" />` : '<div style="width:30px;height:45px;background:var(--bg-hover);border-radius:3px"></div>'}
+                  <strong>${esc(m.title)}</strong>
+                </div>
+              </td>
+              <td style="color:var(--text-muted)">${(m.release_date||'').slice(0,4)||'—'}</td>
+              <td style="font-family:monospace;font-size:12px;color:var(--text-muted)">${m.tmdb_id||m.id||'—'}</td>
+              <td>${m.vote_average ? `<span style="color:var(--accent)">★</span> ${Number(m.vote_average).toFixed(1)}` : '—'}</td>
+              <td>
+                <a href="https://www.themoviedb.org/movie/${m.tmdb_id||m.id}" target="_blank" class="btn btn-ghost btn-sm">TMDB ↗</a>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+/* ─── SETTINGS ───────────────────────────────────────────────────────── */
+async function triggerPrecache() {
+  showConfirm('Pre-cache Trending', 'Fetch and cache current trending movies from TMDB?', async () => {
+    try {
+      const data = await api('/movies/trending');
+      toast(`Fetched ${Array.isArray(data) ? data.length : 0} trending movies`, 'success');
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  });
+}
+
+async function loadImportStatus() {
+  const el = document.getElementById('import-job-status');
+  el.textContent = 'Checking…';
+  try {
+    const jobs = await api('/imports/jobs?page_size=1');
+    const latest = Array.isArray(jobs) ? jobs[0] : null;
+    if (latest) {
+      el.textContent = `${latest.source} — ${latest.status} — ${latest.imported_records || latest.processed_records || 0} imported (${formatDate(latest.completed_at || latest.created_at)})`;
+    } else {
+      el.textContent = 'No import jobs found';
+    }
+  } catch (e) {
+    el.textContent = `Error: ${e.message}`;
+  }
+}
+
+/* ─── UTILITIES ──────────────────────────────────────────────────────── */
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ─── ENTER KEY ON LOGIN ─────────────────────────────────────────────── */
+document.getElementById('login-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+document.getElementById('login-email').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('login-password').focus();
+});
+
+/* ─── INIT ───────────────────────────────────────────────────────────── */
+(function init() {
+  applyTheme(state.activeTheme);
+  if (checkAuth()) {
+    bootApp();
+  }
+})();
+</script>
+</body>
+</html>
