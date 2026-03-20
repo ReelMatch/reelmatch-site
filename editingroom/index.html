@@ -4813,13 +4813,21 @@ function _renderContent(d) {
 
     <div class="analytics-subhead" style="margin-top:8px">By Genre</div>
     ${genres.length ? `
-      <div class="genre-scroll-row" id="genre-scroll-row">
-        ${genres.map((g, i) => `
-          <div class="genre-card" id="genre-card-${i}" onclick="_toggleGenreCard(${i})">
-            <div class="genre-card-name">${esc(g.genre)}</div>
-            <div class="genre-card-meta">${_fmt(g.total_ratings)} ratings &middot; ${g.avg_rating}★</div>
-          </div>`).join('')}
+      <div class="genre-carousel-wrap">
+        <button class="genre-carousel-btn" id="genre-btn-left" onclick="_genreScroll(-1)" aria-label="Scroll left">&#8592;</button>
+        <div class="genre-scroll-outer" id="genre-scroll-outer">
+          <div class="genre-scroll-row" id="genre-scroll-row">
+            ${genres.map((g, i) => `
+              <div class="genre-card" id="genre-card-${i}" onclick="_toggleGenreCard(${i})">
+                <div class="genre-card-name">${esc(g.genre)}</div>
+                <div class="genre-card-rating">${renderStars(g.avg_rating)} ${g.avg_rating}</div>
+                <div class="genre-card-meta">${_fmt(g.total_ratings)} ratings &middot; ${_fmt(g.movie_count)} movies</div>
+              </div>`).join('')}
+          </div>
+        </div>
+        <button class="genre-carousel-btn" id="genre-btn-right" onclick="_genreScroll(1)" aria-label="Scroll right">&#8594;</button>
       </div>
+      <div class="genre-scroll-dots" id="genre-scroll-dots"></div>
       <div id="genre-movies-panel" class="genre-movies-panel"></div>
     ` : '<p style="color:var(--text-muted);font-size:13px;margin-bottom:20px">No genre data available.</p>'}
 
