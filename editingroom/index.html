@@ -1091,6 +1091,88 @@
     .ab-account_deleted { background: rgba(229,62,62,.25);color: #fc8181; }
     .ab-warning_issued  { background: rgba(245,158,11,.15);color: #fcd34d; }
     .ab-note_added   { background: rgba(107,114,128,.15); color: #9ca3af; }
+
+    /* ─── ANALYTICS ──────────────────────────────────────────────────── */
+    .analytics-range-bar {
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .analytics-range-pills { display: flex; gap: 6px; }
+    .range-pill {
+      padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      background: var(--bg-surface); border: 1px solid var(--border);
+      color: var(--text-muted); cursor: pointer; transition: all .15s;
+    }
+    .range-pill:hover { border-color: var(--accent); color: var(--text-primary); }
+    .range-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .analytics-custom-range { display: flex; align-items: center; gap: 8px; }
+    .analytics-custom-range input { padding: 5px 10px; font-size: 12px; }
+    .analytics-tabs {
+      display: flex; gap: 2px; border-bottom: 1px solid var(--border);
+      margin-bottom: 20px; overflow-x: auto;
+    }
+    .analytics-tab {
+      padding: 9px 18px; font-size: 13px; font-weight: 500; cursor: pointer;
+      background: transparent; border: none; color: var(--text-muted);
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      white-space: nowrap; transition: all .15s;
+    }
+    .analytics-tab:hover { color: var(--text-primary); }
+    .analytics-tab.active { color: var(--text-primary); border-bottom-color: var(--accent); }
+    .analytics-stat-cards {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px; margin-bottom: 24px;
+    }
+    .analytics-stat-card {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px;
+    }
+    .asc-label { font-size: 11px; text-transform: uppercase; letter-spacing: .7px; color: var(--text-muted); margin-bottom: 6px; }
+    .asc-value { font-size: 26px; font-weight: 700; line-height: 1; }
+    .asc-sub   { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+    .analytics-chart-wrap {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px; margin-bottom: 20px; position: relative;
+    }
+    .analytics-chart-wrap canvas { max-height: 280px; }
+    .analytics-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    @media(max-width:900px) { .analytics-two-col { grid-template-columns: 1fr; } }
+    .analytics-subhead {
+      font-size: 11px; text-transform: uppercase; letter-spacing: .8px;
+      color: var(--text-muted); margin-bottom: 12px; font-weight: 600;
+    }
+    .analytics-table-wrap { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 20px; overflow: hidden; }
+    .analytics-table-wrap table { width: 100%; border-collapse: collapse; }
+    .analytics-table-wrap th { padding: 10px 14px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--text-muted); border-bottom: 1px solid var(--border); font-weight: 600; }
+    .analytics-table-wrap td { padding: 10px 14px; font-size: 13px; border-bottom: 1px solid var(--border); }
+    .analytics-table-wrap tr:last-child td { border-bottom: none; }
+    .analytics-skeleton { background: var(--bg-hover); border-radius: 8px; animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:.8} }
+    /* Investor tab */
+    .investor-kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    @media(max-width:700px) { .investor-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    .investor-kpi {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px; text-align: center;
+    }
+    .investor-kpi .kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--text-muted); margin-bottom: 8px; }
+    .investor-kpi .kpi-value { font-size: 32px; font-weight: 700; }
+    .investor-kpi .kpi-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+    .investor-growth-row { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    .investor-growth-card {
+      flex: 1; min-width: 140px; background: var(--bg-surface);
+      border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center;
+    }
+    .igc-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .6px; }
+    .igc-value { font-size: 22px; font-weight: 700; }
+    .igc-value.positive { color: #22c55e; }
+    .igc-value.negative { color: var(--accent); }
+    .health-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+    .health-healthy  { background: rgba(34,197,94,.15); color: #22c55e; }
+    .health-degraded { background: rgba(245,158,11,.15); color: #f59e0b; }
+    .health-critical { background: rgba(192,57,43,.15);  color: var(--accent); }
+    .investor-charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    @media(max-width:700px) { .investor-charts-row { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
