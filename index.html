@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ReelMatch — Find Your Next Favorite Film</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #0e0c0a;
+    --paper: #f5f0e8;
+    --accent: #c0392b;
+    --accent2: #e87c35;
+    --muted: #6b6560;
+    --border: #d4cfc6;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    overflow-x: hidden;
+  }
+
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 2.5rem;
+    background: rgba(245, 240, 232, 0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.4rem;
+    color: var(--ink);
+    text-decoration: none;
+    letter-spacing: -0.02em;
+  }
+
+  .logo span { color: var(--accent); }
+
+  nav a {
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-decoration: none;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+
+  nav a:hover { color: var(--ink); }
+
+  .nav-links { display: flex; gap: 2rem; align-items: center; }
+
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 8rem 2.5rem 4rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -20%;
+    right: -10%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(192,57,43,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: center;
+  }
+
+  .hero-text h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2.8rem, 5vw, 4.5rem);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin-bottom: 1.5rem;
+  }
+
+  .hero-text h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .hero-text p {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--muted);
+    max-width: 440px;
+    margin-bottom: 2.5rem;
+  }
+
+  .hero-cta {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 0.9rem 1.8rem;
+    border-radius: 2px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    letter-spacing: 0.02em;
+    transition: background 0.2s, transform 0.2s;
+  }
+
+  .btn-primary:hover { background: var(--accent); transform: translateY(-1px); }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: transparent;
+    color: var(--ink);
+    padding: 0.9rem 1.8rem;
+    border-radius: 2px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    letter-spacing: 0.02em;
+    border: 1px solid var(--border);
+    transition: border-color 0.2s, transform 0.2s;
+  }
+
+  .btn-secondary:hover { border-color: var(--ink); transform: translateY(-1px); }
+
+  .film-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    position: relative;
+  }
+
+  .film-card {
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--ink);
+    aspect-ratio: 2/3;
+    position: relative;
+  }
+
+  .film-card:nth-child(2) { margin-top: 1.5rem; }
+  .film-card:nth-child(3) { margin-top: 3rem; }
+
+  .film-card-inner {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1a1612 0%, #2d2420 50%, #1a1612 100%);
+    display: flex;
+    align-items: flex-end;
+    padding: 1rem;
+  }
+
+  .film-label {
+    font-family: 'DM Serif Display', serif;
+    font-size: 0.75rem;
+    color: rgba(245,240,232,0.6);
+    line-height: 1.3;
+  }
+
+  .rating-pill {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    background: var(--accent);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 500;
+    padding: 0.2rem 0.5rem;
+    border-radius: 2px;
+  }
+
+  .features {
+    padding: 6rem 2.5rem;
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .features-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .section-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1rem;
+  }
+
+  .features h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 3.5vw, 3rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 3rem;
+    max-width: 600px;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+  }
+
+  .feature-item {
+    padding: 2rem;
+    border: 1px solid rgba(245,240,232,0.1);
+    border-radius: 4px;
+  }
+
+  .feature-number {
+    font-family: 'DM Serif Display', serif;
+    font-size: 3rem;
+    color: rgba(192,57,43,0.3);
+    line-height: 1;
+    margin-bottom: 1rem;
+  }
+
+  .feature-item h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.3rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .feature-item p {
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: rgba(245,240,232,0.6);
+  }
+
+  .coming-soon {
+    padding: 6rem 2.5rem;
+    text-align: center;
+  }
+
+  .coming-soon-inner { max-width: 600px; margin: 0 auto; }
+
+  .coming-soon h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 3.5vw, 3rem);
+    letter-spacing: -0.02em;
+    margin-bottom: 1rem;
+  }
+
+  .coming-soon p {
+    color: var(--muted);
+    font-size: 1rem;
+    line-height: 1.7;
+    margin-bottom: 2rem;
+  }
+
+  .store-badges {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .store-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 0.8rem 1.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  footer {
+    padding: 2.5rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: gap;
+    gap: 1rem;
+  }
+
+  footer p { font-size: 0.8rem; color: var(--muted); }
+
+  footer nav { display: flex; gap: 1.5rem; }
+
+  footer nav a {
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-decoration: none;
+  }
+
+  footer nav a:hover { color: var(--ink); }
+
+  @media (max-width: 768px) {
+    .hero-inner { grid-template-columns: 1fr; }
+    .film-grid { display: none; }
+    nav { padding: 1rem 1.5rem; }
+    .hero { padding: 6rem 1.5rem 3rem; }
+    .features, .coming-soon { padding: 4rem 1.5rem; }
+    footer { padding: 2rem 1.5rem; flex-direction: column; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="logo">Reel<span>Match</span></a>
+  <div class="nav-links">
+    <a href="/privacy">Privacy</a>
+    <a href="/terms">Terms</a>
+    <a href="mailto:support@reelmatch.live">Contact</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-text">
+      <h1>Movies you'll <em>actually</em> love.</h1>
+      <p>ReelMatch uses a sophisticated recommendation engine to find films perfectly matched to your taste — and the taste of everyone in the room.</p>
+      <div class="hero-cta">
+        <a href="#coming-soon" class="btn-primary">Coming Soon</a>
+        <a href="mailto:support@reelmatch.live" class="btn-secondary">Get in Touch</a>
+      </div>
+    </div>
+    <div class="film-grid">
+      <div class="film-card">
+        <div class="film-card-inner">
+          <div class="film-label">The Godfather<br>1972</div>
+        </div>
+        <div class="rating-pill">9.5</div>
+      </div>
+      <div class="film-card">
+        <div class="film-card-inner">
+          <div class="film-label">Chinatown<br>1974</div>
+        </div>
+        <div class="rating-pill">9.0</div>
+      </div>
+      <div class="film-card">
+        <div class="film-card-inner">
+          <div class="film-label">Parasite<br>2019</div>
+        </div>
+        <div class="rating-pill">8.5</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="features">
+  <div class="features-inner">
+    <p class="section-label">How it works</p>
+    <h2>A recommendation engine that actually knows you.</h2>
+    <div class="features-grid">
+      <div class="feature-item">
+        <div class="feature-number">01</div>
+        <h3>Rate what you've seen</h3>
+        <p>Score movies on a 0–10 scale. Import your existing ratings from Letterboxd, IMDb, or Trakt in seconds.</p>
+      </div>
+      <div class="feature-item">
+        <div class="feature-number">02</div>
+        <h3>Get precise recommendations</h3>
+        <p>Our collaborative filtering engine finds users with taste profiles closest to yours and surfaces films you haven't seen yet.</p>
+      </div>
+      <div class="feature-item">
+        <div class="feature-number">03</div>
+        <h3>Movie night, solved</h3>
+        <p>Create a group with friends. ReelMatch finds the films everyone will enjoy — no more 45 minutes of indecision.</p>
+      </div>
+      <div class="feature-item">
+        <div class="feature-number">04</div>
+        <h3>Know where to watch</h3>
+        <p>Every recommendation comes with streaming availability so you can go from suggestion to watching in seconds.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="coming-soon" id="coming-soon">
+  <div class="coming-soon-inner">
+    <p class="section-label">Coming Soon</p>
+    <h2>Available soon on iOS and Android.</h2>
+    <p>ReelMatch is currently in development. Leave your email to be notified at launch.</p>
+    <div class="store-badges">
+      <a href="mailto:support@reelmatch.live?subject=Notify me at launch" class="store-badge">
+        Notify me at launch →
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>© 2026 ReelMatch. All rights reserved.</p>
+  <nav>
+    <a href="/privacy">Privacy Policy</a>
+    <a href="/terms">Terms of Service</a>
+    <a href="/contact">Contact</a>
+    <a href="mailto:support@reelmatch.live">support@reelmatch.live</a>
+  </nav>
+</footer>
+
+</body>
+</html>
