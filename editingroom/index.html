@@ -2477,10 +2477,24 @@ let _reportsCache = null;
 let reportsSortCol = 'created_at';
 let reportsSortDir = 'desc';
 let reportsPage = 1;
-let reportsPageSize = 20;
+let reportsPageSize = 0;  // 0 = not yet locked
 let reportsFilter = null;
 let reportsQuery = '';
 let reportsTotal = 0;
+let _reportsPageSizeLocked = false;
+let _reportsResizeTimer = null;
+
+// Recalculate page_size on window resize (debounced 300ms)
+window.addEventListener('resize', () => {
+  if (state.section !== 'reports') return;
+  clearTimeout(_reportsResizeTimer);
+  _reportsResizeTimer = setTimeout(() => {
+    _reportsPageSizeLocked = false;
+    _measureAndSetReportsLayout();
+    reportsPage = 1;
+    fetchReportsPage();
+  }, 300);
+});
 
 const REPORT_IS_FILTERS = [
   { key: 'is:pending',   label: 'Pending',   filter: 'is:pending' },
