@@ -3413,6 +3413,42 @@ async function _loadGroupsPanel(u, el) {
     </div>`).join('');
 }
 
+function deleteReview(reviewId, username) {
+  showReasonModal({
+    title: 'Delete Review',
+    chipKey: 'content_removed',
+    destructive: true,
+    onConfirm: async (reason) => {
+      try {
+        await api(`/admin/reviews/${reviewId}`, {
+          method: 'DELETE',
+          body: JSON.stringify({ reason }),
+        });
+        const row = document.getElementById(`review-row-${reviewId}`);
+        if (row) {
+          row.style.transition = 'opacity 0.3s';
+          row.style.opacity = '0';
+          setTimeout(() => row.remove(), 300);
+        }
+        // Decrement reviews count badge
+        if (_panelUser) {
+          _panelUser.total_reviews = Math.max(0, (_panelUser.total_reviews || 1) - 1);
+          const badge = document.querySelector('.panel-stat-n');
+          // Update the Reviews stat badge specifically
+          document.querySelectorAll('.panel-stat').forEach(el => {
+            if (el.querySelector('.panel-stat-l')?.textContent === 'Reviews') {
+              el.querySelector('.panel-stat-n').textContent = _panelUser.total_reviews;
+            }
+          });
+        }
+        toast('Review deleted', 'success');
+      } catch (e) {
+        toast(`Failed to delete review: ${e.message}`, 'error');
+      }
+    },
+  });
+}
+
 /* ─── UTILITIES ──────────────────────────────────────────────────────── */
 function esc(s) {
   if (!s) return '';
