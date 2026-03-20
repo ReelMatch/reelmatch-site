@@ -215,7 +215,12 @@
       padding: 20px 18px;
       transition: transform .15s, box-shadow .15s;
     }
-    .stat-card:hover {
+    .stat-card[data-action] { cursor: pointer; }
+    .stat-card[data-action]:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 6px 24px rgba(0,0,0,.18), 0 0 0 1px var(--accent);
+    }
+    .stat-card:not([data-action]):hover {
       transform: translateY(-2px);
       box-shadow: 0 6px 24px rgba(0,0,0,.18);
     }
@@ -1004,7 +1009,11 @@ async function api(path, opts = {}) {
     if (res.status === 401) { doLogout(); return null; }
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
-      throw new Error(err.detail || `HTTP ${res.status}`);
+      const detail = Array.isArray(err.detail)
+        ? err.detail.map(d => d.msg || JSON.stringify(d)).join('; ')
+        : (err.detail || err.message || `HTTP ${res.status}`);
+      console.error(`API ${res.status} ${path}:`, err);
+      throw new Error(detail);
     }
     if (res.status === 204) return null;
     return await res.json();
@@ -1124,18 +1133,18 @@ async function loadDashboard() {
   body.innerHTML = `
     <!-- Row 1: 4 large cards -->
     <div class="stats-grid">
-      ${bigCard('Total Users',    s.total_users,    'registered accounts')}
-      ${bigCard('Total Ratings',  s.total_ratings,  'user film ratings')}
-      ${bigCard('Movies Cached',  s.movies_cached,  'in Supabase catalogue')}
-      ${bigCard('Pending Reports', pending, 'awaiting moderation', pending > 0)}
+      ${bigCard('Total Users',    s.total_users,    'registered accounts',   false,        'users-all')}
+      ${bigCard('Total Ratings',  s.total_ratings,  'user film ratings',     false,        'ratings-all')}
+      ${bigCard('Movies Cached',  s.movies_cached,  'in Supabase catalogue', false,        '')}
+      ${bigCard('Pending Reports', pending,          'awaiting moderation',   pending > 0, 'reports')}
     </div>
 
     <!-- Row 2: 4 medium cards -->
     <div class="stats-grid-2">
-      ${medCard('New Users Today',      s.new_users_today,    'joined since midnight')}
-      ${medCard('Ratings Today',        s.ratings_today,      'ratings logged today')}
-      ${medCard('Active Group Sessions',s.active_sessions,    'sessions in progress')}
-      ${medCard('Achievements Earned',  s.achievements_earned,'total unlocked')}
+      ${medCard('New Users Today',       s.new_users_today,    'joined since midnight', 'users-today')}
+      ${medCard('Ratings Today',         s.ratings_today,      'ratings logged today',  'ratings-today')}
+      ${medCard('Active Group Sessions', s.active_sessions,    'sessions in progress',  'groups-active')}
+      ${medCard('Achievements Earned',   s.achievements_earned,'total unlocked',        'users-all')}
     </div>
 
     <!-- Row 3: 2 wide cards -->
@@ -1184,22 +1193,24 @@ function skeletonHTML() {
   return row(4) + row(4) + `<div class="skeleton-grid" style="grid-template-columns:1fr 1fr">${'<div class="skeleton-box" style="height:110px"></div>'.repeat(2)}</div>`;
 }
 
-function bigCard(label, value, sublabel, isDanger = false) {
+function bigCard(label, value, sublabel, isDanger = false, action = '') {
   const n = Number(value);
   const display = isNaN(n) ? value : n.toLocaleString();
+  const actionAttr = action ? ` data-action="${action}" onclick="handleCardClick('${action}')"` : '';
   return `
-    <div class="stat-card${isDanger ? ' danger' : ''}">
+    <div class="stat-card${isDanger ? ' danger' : ''}"${actionAttr}>
       <div class="stat-number" data-count="${isNaN(n)?'':n}">${isDanger ? '⚠ ' : ''}${display}</div>
       <div class="stat-label">${label}</div>
       <div class="stat-sublabel">${sublabel}</div>
     </div>`;
 }
 
-function medCard(label, value, sublabel) {
+function medCard(label, value, sublabel, action = '') {
   const n = Number(value);
   const display = isNaN(n) ? value : n.toLocaleString();
+  const actionAttr = action ? ` data-action="${action}" onclick="handleCardClick('${action}')"` : '';
   return `
-    <div class="stat-card">
+    <div class="stat-card"${actionAttr}>
       <div class="stat-number sm" data-count="${isNaN(n)?'':n}">${display}</div>
       <div class="stat-label">${label}</div>
       <div class="stat-sublabel">${sublabel}</div>
@@ -1245,9 +1256,52 @@ function startDashAutoRefresh() {
 }
 
 /* ─── USERS ──────────────────────────────────────────────────────────── */
+function handleCardClick(action) {
+  switch (action) {
+    case 'users-all':    navigate('users'); loadUsers(); break;
+    case 'users-today':  navigate('users'); fetchUsersFiltered('today'); break;
+    case 'users-week':   navigate('users'); fetchUsersFiltered('week'); break;
+    case 'ratings-all':  navigate('users'); toast('Ratings view — coming soon', 'info'); break;
+    case 'ratings-today':navigate('users'); toast('Ratings today view — coming soon', 'info'); break;
+    case 'reports':      navigate('reports'); break;
+    case 'groups-active':navigate('users'); toast('Groups view — coming soon', 'info'); break;
+  }
+}
+
+async function fetchUsersFiltered(filter) {
+  const wrap = document.getElementById('users-table-wrap');
+  const subtitle = document.querySelector('#sec-users .section-subtitle');
+  wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Loading users…</div>`;
+  const now = new Date();
+  let since;
+  if (filter === 'today') {
+    since = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    if (subtitle) subtitle.textContent = 'Joined today';
+  } else if (filter === 'week') {
+    since = new Date(now - 7 * 864e5).toISOString();
+    if (subtitle) subtitle.textContent = 'Joined this week';
+  }
+  try {
+    // Fetch all and filter client-side (API doesn't support date filter)
+    const data = await api(`/users/search?q=&page_size=200`);
+    console.log('users/search response:', data);
+    if (!data) return;
+    const filtered = since
+      ? data.filter(u => u.created_at && u.created_at >= since)
+      : data;
+    renderUsersTable(filtered);
+  } catch (e) {
+    console.error('fetchUsersFiltered error:', e);
+    wrap.innerHTML = `<div class="empty">Error: ${esc(e.message)}</div>`;
+    toast(e.message, 'error');
+  }
+}
+
 async function loadUsers() {
   state.userQuery = '';
   document.getElementById('user-search').value = '';
+  const subtitle = document.querySelector('#sec-users .section-subtitle');
+  if (subtitle) subtitle.textContent = 'Search and manage accounts';
   await fetchUsers('');
 }
 async function searchUsers() {
@@ -1260,11 +1314,15 @@ async function fetchUsers(query) {
   const wrap = document.getElementById('users-table-wrap');
   wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Loading users…</div>`;
   try {
-    const data = await api(`/users/search?q=${encodeURIComponent(query)}&page_size=50`);
+    const url = `/users/search?q=${encodeURIComponent(query)}&page_size=50`;
+    console.log('fetchUsers GET', url);
+    const data = await api(url);
+    console.log('fetchUsers response:', data);
     if (!data) return;
-    renderUsersTable(data);
+    renderUsersTable(Array.isArray(data) ? data : (data.users || data.results || []));
   } catch (e) {
-    wrap.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+    console.error('fetchUsers error:', e);
+    wrap.innerHTML = `<div class="empty">Error: ${esc(e.message)}</div>`;
     toast(e.message, 'error');
   }
 }
@@ -1567,10 +1625,10 @@ function renderMoviesTable(movies) {
         </tr></thead>
         <tbody>
           ${movies.map(m => `
-            <tr>
-              <td>
-                <div style="display:flex;align-items:center;gap:10px">
-                  ${m.poster_path ? `<img src="https://image.tmdb.org/t/p/w45${m.poster_path}" style="width:30px;height:45px;object-fit:cover;border-radius:3px" />` : '<div style="width:30px;height:45px;background:var(--bg-hover);border-radius:3px"></div>'}
+            <tr style="height:64px">
+              <td style="padding-top:0;padding-bottom:0">
+                <div style="display:flex;align-items:center;gap:10px;height:100%">
+                  ${m.poster_path ? `<img src="https://image.tmdb.org/t/p/w92${m.poster_path}" style="width:auto;height:60px;object-fit:cover;border-radius:3px;flex-shrink:0" />` : '<div style="width:40px;height:60px;background:var(--bg-hover);border-radius:3px;flex-shrink:0"></div>'}
                   <strong>${esc(m.title)}</strong>
                 </div>
               </td>
