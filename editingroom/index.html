@@ -2589,6 +2589,8 @@ async function searchReports() {
 }
 
 function _measureAndSetReportsLayout() {
+  // Guard: never recalculate while locked (only the resize handler unlocks)
+  if (_reportsPageSizeLocked) return;
   const wrap = document.getElementById('reports-table-wrap');
   if (!wrap) return;
   // Measure the top of the wrap relative to the viewport after paint
