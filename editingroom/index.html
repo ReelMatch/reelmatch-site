@@ -3254,25 +3254,42 @@ function renderBannedTable(rows) {
     <div class="table-wrap">
       <table>
         <thead><tr>
+          <th>Type</th>
+          <th>Username</th>
           <th>Email</th>
-          <th>IP Address</th>
-          <th>Phone</th>
           <th>Reason</th>
-          <th>Banned By</th>
+          <th>Action by</th>
           <th>Date</th>
           <th></th>
         </tr></thead>
         <tbody>
-          ${rows.map(b => `
-            <tr>
+          ${rows.map(b => {
+            const isBanned = b.type === 'banned';
+            const rowBg = isBanned
+              ? 'background:rgba(220,53,69,0.12)'
+              : 'background:rgba(255,182,193,0.15)';
+            const badge = isBanned
+              ? '<span class="badge" style="background:rgba(220,53,69,0.35);color:#ff8a8a;font-size:10px">banned</span>'
+              : '<span class="badge badge-suspended" style="font-size:10px">suspended</span>';
+            const usernameCell = b.username
+              ? (isBanned
+                  ? `<td style="color:var(--text-muted)">${esc(b.username)}</td>`
+                  : `<td><span style="cursor:pointer;color:var(--accent);text-decoration:underline" onclick="openUserPanel('${esc(b.username)}')">${esc(b.username)}</span></td>`)
+              : `<td style="color:var(--text-muted)">—</td>`;
+            const actionBtn = isBanned
+              ? `<button class="btn btn-ghost btn-sm" onclick="unbanEntry('${esc(b.id)}', '${esc(b.email || '')}')">Unban</button>`
+              : `<button class="btn btn-ghost btn-sm" onclick="unsuspendEntry('${esc(b.user_id)}', '${esc(b.username || '')}')">Unsuspend</button>`;
+            return `
+            <tr style="${rowBg}">
+              <td>${badge}</td>
+              ${usernameCell}
               <td>${esc(b.email || '—')}</td>
-              <td style="font-family:monospace;font-size:12px">${esc(b.ip_address || '—')}</td>
-              <td>${esc(b.phone_number || '—')}</td>
-              <td style="color:var(--text-muted)">${esc(b.reason || '—')}</td>
+              <td style="color:var(--text-muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(b.reason || '—')}</td>
               <td style="color:var(--text-muted)">${esc(b.banned_by_username || '—')}</td>
               <td style="color:var(--text-muted);font-size:12px;white-space:nowrap">${formatDate(b.created_at)}</td>
-              <td><button class="btn btn-ghost btn-sm" onclick="unbanEntry('${esc(b.id)}', '${esc(b.email || '')}')">Unban</button></td>
-            </tr>`).join('')}
+              <td>${actionBtn}</td>
+            </tr>`;
+          }).join('')}
         </tbody>
       </table>
     </div>
@@ -3285,18 +3302,41 @@ function renderBannedTable(rows) {
 }
 
 async function unbanEntry(banId, email) {
-  const label = email ? `ban for ${email}` : 'this ban';
-  if (!confirm(`Lift ${label} and reactivate the user account?`)) return;
-  try {
-    await api(`/admin/banned-users/${banId}`, {
-      method: 'DELETE',
-      body: JSON.stringify({ reactivate: true }),
-    });
-    toast('Ban lifted', 'success');
-    loadBannedUsers();
-  } catch (e) {
-    toast(`Failed: ${e.message}`, 'error');
-  }
+  showReasonModal({
+    title: `Lift ban${email ? ` for ${email}` : ''}`,
+    chipKey: 'unsuspend',
+    onConfirm: async (reason) => {
+      try {
+        await api(`/admin/banned-users/${banId}`, {
+          method: 'DELETE',
+          body: JSON.stringify({ reason, reactivate: true }),
+        });
+        toast('Ban lifted', 'success');
+        loadBannedUsers();
+      } catch (e) {
+        toast(`Failed: ${e.message}`, 'error');
+      }
+    },
+  });
+}
+
+async function unsuspendEntry(userId, username) {
+  showReasonModal({
+    title: `Unsuspend ${username || 'user'}`,
+    chipKey: 'unsuspend',
+    onConfirm: async (reason) => {
+      try {
+        await api(`/admin/users/${userId}/unsuspend`, {
+          method: 'PUT',
+          body: JSON.stringify({ reason }),
+        });
+        toast(`${username || 'User'} unsuspended`, 'success');
+        loadBannedUsers();
+      } catch (e) {
+        toast(`Failed: ${e.message}`, 'error');
+      }
+    },
+  });
 }
 
 /* ─── STAT SUB-PANELS ────────────────────────────────────────────────── */
