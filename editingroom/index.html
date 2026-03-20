@@ -1998,6 +1998,7 @@ async function fetchUsersPage() {
             ? (state.usersPage - 1) * state.usersPageSize + data.length
             : state.usersTotal);
     }
+    console.log('[fetchUsersPage] raw data first 5:', data.slice(0,5).map(u => ({id:u.id, username:u.username, first_name:u.first_name, last_name:u.last_name})));
     renderUsersTable(data, state.usersTotal);
   } catch (e) {
     console.error('fetchUsersPage error:', e);
@@ -2007,6 +2008,7 @@ async function fetchUsersPage() {
 }
 
 function renderUsersTable(users, total) {
+  console.log('[renderUsersTable] first 5 rows:', users.slice(0,5).map(u => ({id:u.id, username:u.username, first_name:u.first_name, last_name:u.last_name})));
   const wrap = document.getElementById('users-table-wrap');
   if (!users.length) {
     wrap.innerHTML = `<div class="empty">No users found.</div>`;
@@ -2602,20 +2604,22 @@ async function openUserPanel(username) {
   _panelUser = { ...adminData };
 
   try {
-    // Fetch public profile for stats (total_ratings, follower_count, etc.)
+    // Fetch public profile for stats and any fields not in the admin cache
     const profile = await api(`/users/${username}`);
+    console.log('[openUserPanel] raw profile API response:', profile);
     if (profile) {
-      // Merge: profile adds stats; admin data wins for auth/admin fields
+      // Start from adminData (preserves all admin-only fields: first_name, last_name, etc.)
+      // Overlay profile fields, but adminData wins for any field it already has a value for
       _panelUser = {
         ...profile,
-        id:             adminData.id             ?? profile.id,
-        email:          adminData.email          ?? profile.email,
-        email_verified: adminData.email_verified ?? false,
-        role:           adminData.role           ?? profile.role,
-        is_active:      adminData.is_active,
+        ...adminData,
+        // Always take stats from the live profile (not cached)
+        total_ratings:   profile.total_ratings,
+        follower_count:  profile.follower_count,
+        following_count: profile.following_count,
       };
     }
-    console.log('openUserPanel: _panelUser =', _panelUser);
+    console.log('[openUserPanel] merged _panelUser:', JSON.parse(JSON.stringify(_panelUser)));
     renderUserPanel(_panelUser);
   } catch (e) {
     console.error('openUserPanel fetch error:', e);
