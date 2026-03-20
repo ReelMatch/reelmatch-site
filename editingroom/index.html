@@ -2684,19 +2684,25 @@ function renderReportsTable(reports, total) {
           <th style="${thStyle}" onclick="setReportsSortCol('created_at')">Date${reportsSortIcon('created_at')}</th>
         </tr></thead>
         <tbody>
-          ${reports.map(r => `
-            <tr id="report-row-${esc(r.id)}" style="cursor:pointer" onclick="openReportPanel('${esc(r.id)}')">
+          ${reports.map(r => {
+            const isHarassment = (r.reason || '').toLowerCase() === 'harassment';
+            const rowBg = isHarassment ? 'background:rgba(245,158,11,0.15);' : '';
+            const reasonCell = isHarassment
+              ? `<span style="background:rgba(245,158,11,0.2);color:#d97706;font-size:10px;padding:2px 6px;border-radius:10px;font-weight:600">⚠ Harassment</span>`
+              : esc(r.reason);
+            return `
+            <tr id="report-row-${esc(r.id)}" style="cursor:pointer;${rowBg}" onclick="openReportPanel('${esc(r.id)}')">
               <td><span class="badge badge-pending">${esc(r.content_type)}</span></td>
               <td><strong>${esc(r.offender_username || '—')}</strong></td>
               <td style="color:var(--text-muted)">${esc(r.reporter_username || '—')}</td>
               <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);font-size:12px">
                 ${esc(r.content_preview || '—')}
               </td>
-              <td>${esc(r.reason)}</td>
+              <td>${reasonCell}</td>
               <td>${reportStatusBadge(r.status)}</td>
               <td style="font-size:12px;color:var(--text-muted);white-space:nowrap">${formatDate(r.created_at)}</td>
-            </tr>
-          `).join('')}
+            </tr>`;
+          }).join('')}
         </tbody>
       </table>
     </div>
