@@ -3301,7 +3301,7 @@ function renderBannedTable(rows) {
       <table>
         <thead><tr>
           <th>Type</th>
-          <th>Username</th>
+          <th>User</th>
           <th>Email</th>
           <th>Reason</th>
           <th>Action by</th>
@@ -3317,23 +3317,32 @@ function renderBannedTable(rows) {
             const badge = isBanned
               ? '<span class="badge" style="background:rgba(220,53,69,0.35);color:#ff8a8a;font-size:10px">banned</span>'
               : '<span class="badge badge-suspended" style="font-size:10px">suspended</span>';
-            const usernameCell = b.username
-              ? (isBanned
-                  ? `<td style="color:var(--text-muted)">${esc(b.username)}</td>`
-                  : `<td><span style="cursor:pointer;color:var(--accent);text-decoration:underline" onclick="openUserPanel('${esc(b.username)}')">${esc(b.username)}</span></td>`)
-              : `<td style="color:var(--text-muted)">—</td>`;
+
+            const displayName = b.username || b.email || 'Unknown';
+            const subName = (b.first_name || b.last_name)
+              ? `<div style="color:var(--text-muted);font-size:11px;margin-top:2px">${esc([b.first_name, b.last_name].filter(Boolean).join(' '))}</div>`
+              : '';
+            const hasUserId = !!b.user_id;
+            const rowClick = hasUserId
+              ? `style="${rowBg};cursor:pointer" onclick="openProblemUserPanel(event, '${esc(b.username || '')}', '${esc(b.user_id || '')}', ${JSON.stringify(b).replace(/'/g, '\\x27').replace(/"/g, '&quot;')})" `
+              : `style="${rowBg}"`;
+
             const actionBtn = isBanned
-              ? `<button class="btn btn-ghost btn-sm" onclick="unbanEntry('${esc(b.id)}', '${esc(b.email || '')}')">Unban</button>`
-              : `<button class="btn btn-ghost btn-sm" onclick="unsuspendEntry('${esc(b.user_id)}', '${esc(b.username || '')}')">Unsuspend</button>`;
+              ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();unbanEntry('${esc(b.id)}', '${esc(b.email || '')}')">Unban</button>`
+              : `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();unsuspendEntry('${esc(b.user_id)}', '${esc(b.username || '')}')">Unsuspend</button>`;
+            const modLogBtn = hasUserId
+              ? `<button class="btn btn-ghost btn-sm" style="margin-left:4px" onclick="event.stopPropagation();openRowModLog('${esc(b.user_id)}', '${esc(displayName)}')">Mod Log</button>`
+              : '';
+
             return `
-            <tr style="${rowBg}">
+            <tr ${rowClick}>
               <td>${badge}</td>
-              ${usernameCell}
-              <td>${esc(b.email || '—')}</td>
-              <td style="color:var(--text-muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(b.reason || '—')}</td>
+              <td><div style="font-weight:600">${esc(displayName)}</div>${subName}</td>
+              <td style="color:var(--text-muted)">${esc(b.email || '—')}</td>
+              <td style="color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(b.reason || '')}">${esc(b.reason || '—')}</td>
               <td style="color:var(--text-muted)">${esc(b.banned_by_username || '—')}</td>
               <td style="color:var(--text-muted);font-size:12px;white-space:nowrap">${formatDate(b.created_at)}</td>
-              <td>${actionBtn}</td>
+              <td style="white-space:nowrap" onclick="event.stopPropagation()">${actionBtn}${modLogBtn}</td>
             </tr>`;
           }).join('')}
         </tbody>
