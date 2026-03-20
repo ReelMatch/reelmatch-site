@@ -767,6 +767,44 @@
     }
     .danger-zone .panel-section-title { color: #e57373; }
 
+    /* ─── TOGGLE SWITCH ──────────────────────────────────────────────── */
+    .toggle-wrap { display: flex; align-items: center; gap: 10px; }
+    .toggle { position: relative; display: inline-block; width: 36px; height: 20px; cursor: pointer; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-slider {
+      position: absolute; inset: 0; border-radius: 20px;
+      background: var(--border); transition: background .2s;
+    }
+    .toggle-slider::before {
+      content: ''; position: absolute; width: 14px; height: 14px;
+      left: 3px; top: 3px; background: white; border-radius: 50%;
+      transition: transform .2s;
+    }
+    .toggle input:checked + .toggle-slider { background: var(--accent); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
+    .toggle-label { font-size: 13px; color: var(--text-primary); }
+
+    /* ─── PRONOUN CHIPS ───────────────────────────────────────────────── */
+    .pronoun-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+    .pronoun-chip {
+      padding: 3px 10px; border-radius: 12px; font-size: 12px; cursor: pointer;
+      border: 1px solid var(--border); color: var(--text-muted);
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .pronoun-chip:hover, .pronoun-chip.active {
+      background: var(--accent-dim); color: var(--accent); border-color: var(--accent);
+    }
+
+    /* ─── SORT INDICATORS ────────────────────────────────────────────── */
+    .sort-icon { font-size: 11px; opacity: .5; margin-left: 3px; }
+    .sort-icon.sort-active { opacity: 1; color: var(--accent); }
+    th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+    th.sortable:hover { color: var(--text-primary); }
+
+    /* ─── ROW FADE OUT ───────────────────────────────────────────────── */
+    @keyframes rowFadeOut { to { opacity: 0; transform: translateX(20px); } }
+    .row-removing { animation: rowFadeOut .3s ease forwards; }
+
     /* ─── INLINE FIELD EDITING ──────────────────────────────────────── */
     .pf-grid { display: flex; flex-direction: column; }
     .pf-row {
@@ -1242,6 +1280,9 @@ let state = {
   usersPageSize: 20,
   _filteredUsers: null,
   _usersTotalFetched: false,
+  sortCol: 'created_at',
+  sortDir: 'desc',
+  _currentPageData: null,
 };
 
 /* ─── THEME SYSTEM ───────────────────────────────────────────────────── */
@@ -1778,6 +1819,8 @@ function renderUsersTable(users, total) {
     return;
   }
   const totalUsers = total ?? users.length;
+  state._currentPageData = users;
+  const sorted = sortUsers(users);
   const ps = state.usersPageSize;
   const page = state.usersPage;
   const from = (page - 1) * ps + 1;
@@ -1787,12 +1830,15 @@ function renderUsersTable(users, total) {
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>Username</th><th>Email</th><th>Role</th>
-          <th>Verified</th><th>Joined</th>
+          <th class="sortable" onclick="setSortCol('username')">Username ${sortIcon('username')}</th>
+          <th class="sortable" onclick="setSortCol('email')">Email ${sortIcon('email')}</th>
+          <th class="sortable" onclick="setSortCol('role')">Role ${sortIcon('role')}</th>
+          <th class="sortable" onclick="setSortCol('email_verified')">Verified ${sortIcon('email_verified')}</th>
+          <th class="sortable" onclick="setSortCol('created_at')">Joined ${sortIcon('created_at')}</th>
         </tr></thead>
         <tbody>
-          ${users.map(u => { _userAdminCache[u.username] = u; return `
-            <tr onclick="openUserPanel('${esc(u.username)}')" style="cursor:pointer">
+          ${sorted.map(u => { _userAdminCache[u.username] = u; return `
+            <tr data-uid="${u.id}" onclick="openUserPanel('${esc(u.username)}')" style="cursor:pointer">
               <td><strong>${esc(u.username)}</strong></td>
               <td style="color:var(--text-muted)">${esc(u.email||'—')}</td>
               <td>${roleBadge(u.role)}</td>
@@ -2165,6 +2211,101 @@ async function loadImportStatus() {
   }
 }
 
+/* ─── USER LIST SORT ─────────────────────────────────────────────── */
+function sortUsers(users) {
+  const col = state.sortCol;
+  const dir = state.sortDir;
+  return [...users].sort((a, b) => {
+    let va = a[col] ?? '';
+    let vb = b[col] ?? '';
+    if (col === 'email_verified') { va = va === true ? 1 : 0; vb = vb === true ? 1 : 0; }
+    else { va = String(va).toLowerCase(); vb = String(vb).toLowerCase(); }
+    if (va < vb) return dir === 'asc' ? -1 : 1;
+    if (va > vb) return dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+}
+
+function setSortCol(col) {
+  if (state.sortCol === col) {
+    state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    state.sortCol = col;
+    state.sortDir = 'asc';
+  }
+  if (state._currentPageData) renderUsersTable(state._currentPageData, state.usersTotal);
+}
+
+function sortIcon(col) {
+  if (state.sortCol !== col) return '<span class="sort-icon">↕</span>';
+  return `<span class="sort-icon sort-active">${state.sortDir === 'asc' ? '↑' : '↓'}</span>`;
+}
+
+function updateCurrentPageRow(userId) {
+  if (!state._currentPageData || !_panelUser) return;
+  const idx = state._currentPageData.findIndex(u => u.id === userId);
+  if (idx !== -1) {
+    state._currentPageData[idx] = { ...state._currentPageData[idx], ..._panelUser };
+    const cacheKey = Object.keys(_userAdminCache).find(k => _userAdminCache[k].id === userId);
+    if (cacheKey) state._currentPageData[idx] = { ...state._currentPageData[idx], ..._userAdminCache[cacheKey] };
+  }
+  renderUsersTable(state._currentPageData, state.usersTotal);
+}
+
+function removeCurrentPageRow(userId) {
+  if (!state._currentPageData) return;
+  const row = document.querySelector(`tr[data-uid="${userId}"]`);
+  const doRemove = () => {
+    state._currentPageData = state._currentPageData.filter(u => u.id !== userId);
+    state.usersTotal = Math.max(0, state.usersTotal - 1);
+    renderUsersTable(state._currentPageData, state.usersTotal);
+  };
+  if (row) {
+    row.classList.add('row-removing');
+    setTimeout(doRemove, 310);
+  } else {
+    doRemove();
+  }
+}
+
+function calcAge(birthdate) {
+  if (!birthdate) return null;
+  const birth = new Date(birthdate);
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const m = now.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+  return age;
+}
+
+async function toggleUserField(field, newVal) {
+  if (!_panelUser) return;
+  try {
+    await api(`/admin/users/${_panelUser.id}/edit`, {
+      method: 'PUT',
+      body: JSON.stringify({ field, value: String(newVal) }),
+    });
+    _panelUser[field] = newVal;
+    const cacheKey = Object.keys(_userAdminCache).find(k => _userAdminCache[k].id === _panelUser.id);
+    if (cacheKey) _userAdminCache[cacheKey][field] = newVal;
+    const label = field.replace(/_/g, ' ');
+    toast(`${label.charAt(0).toUpperCase() + label.slice(1)} ${newVal ? 'enabled' : 'disabled'}`, 'success');
+    renderUserPanel(_panelUser);
+    updateCurrentPageRow(_panelUser.id);
+  } catch (e) {
+    toast(`Failed: ${e.message}`, 'error');
+  }
+}
+
+function selectPronoun(text) {
+  const input = document.getElementById('pf-input-pronouns');
+  if (input) {
+    input.value = text;
+    document.querySelectorAll('.pronoun-chip').forEach(c =>
+      c.classList.toggle('active', c.textContent === text));
+  }
+}
+
 /* ─── REASON MODAL ───────────────────────────────────────────────────── */
 let _reasonCallback = null;
 let _reasonMinLen   = 5;
@@ -2332,16 +2473,16 @@ function renderUserPanel(u) {
         <div class="panel-stat"><div class="panel-stat-n">${groups}</div><div class="panel-stat-l">Groups</div></div>
       </div>
 
-      <!-- Editable Profile Fields -->
+      <!-- IDENTITY -->
       <div class="panel-section">
-        <div class="panel-section-title">Profile</div>
+        <div class="panel-section-title">Identity</div>
         <div class="pf-grid">
           ${[
-            ['display_name', 'Name',     u.display_name],
-            ['username',     'Username', u.username],
-            ['email',        'Email',    u.email],
-            ['bio',          'Bio',      u.bio],
-            ['role',         'Role',     u.role],
+            ['first_name',   'First Name',   u.first_name],
+            ['last_name',    'Last Name',    u.last_name],
+            ['username',     'Username',     u.username],
+            ['display_name', 'Display Name', u.display_name],
+            ['pronouns',     'Pronouns',     u.pronouns],
           ].map(([field, label, val]) => `
             <div class="pf-row">
               <div class="pf-label">${label}</div>
@@ -2350,6 +2491,107 @@ function renderUserPanel(u) {
                 <button class="pf-edit-btn" onclick="startFieldEdit('${field}')" title="Edit ${label}">✎</button>
               </div>
             </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- PROFILE -->
+      <div class="panel-section">
+        <div class="panel-section-title">Profile</div>
+        <div class="pf-grid">
+          ${[
+            ['bio',      'Bio',      u.bio],
+            ['location', 'Location', u.location],
+            ['website',  'Website',  u.website],
+          ].map(([field, label, val]) => `
+            <div class="pf-row">
+              <div class="pf-label">${label}</div>
+              <div class="pf-val-wrap" id="pf-${field}">
+                <span class="pf-val${!val ? ' empty' : ''}">${esc(val || '—')}</span>
+                <button class="pf-edit-btn" onclick="startFieldEdit('${field}')" title="Edit ${label}">✎</button>
+              </div>
+            </div>`).join('')}
+          <div class="pf-row">
+            <div class="pf-label">Public</div>
+            <div class="pf-val-wrap">
+              <div class="toggle-wrap">
+                <label class="toggle">
+                  <input type="checkbox" ${u.is_profile_public !== false ? 'checked' : ''} onchange="toggleUserField('is_profile_public', this.checked)" />
+                  <span class="toggle-slider"></span>
+                </label>
+                <span class="toggle-label">${u.is_profile_public !== false ? 'Public profile' : 'Private profile'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PREFERENCES -->
+      <div class="panel-section">
+        <div class="panel-section-title">Preferences</div>
+        <div class="pf-grid">
+          <div class="pf-row">
+            <div class="pf-label">Adult</div>
+            <div class="pf-val-wrap">
+              <div class="toggle-wrap">
+                <label class="toggle">
+                  <input type="checkbox" ${u.show_adult_content ? 'checked' : ''} onchange="toggleUserField('show_adult_content', this.checked)" />
+                  <span class="toggle-slider"></span>
+                </label>
+                <span class="toggle-label">${u.show_adult_content ? 'Adult content on' : 'Adult content off'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACCOUNT -->
+      <div class="panel-section">
+        <div class="panel-section-title">Account</div>
+        <div class="pf-grid">
+          ${[
+            ['email', 'Email', u.email],
+            ['role',  'Role',  u.role],
+          ].map(([field, label, val]) => `
+            <div class="pf-row">
+              <div class="pf-label">${label}</div>
+              <div class="pf-val-wrap" id="pf-${field}">
+                <span class="pf-val${!val ? ' empty' : ''}">${esc(val || '—')}</span>
+                <button class="pf-edit-btn" onclick="startFieldEdit('${field}')" title="Edit ${label}">✎</button>
+              </div>
+            </div>`).join('')}
+          <div class="pf-row">
+            <div class="pf-label">Birthdate</div>
+            <div class="pf-val-wrap" id="pf-birthdate">
+              ${(() => {
+                const age = calcAge(u.birthdate);
+                const bdStr = u.birthdate
+                  ? new Date(u.birthdate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+                  : null;
+                return `
+                  <span class="pf-val${!u.birthdate ? ' empty' : ''}">
+                    ${bdStr || '—'}
+                    ${age !== null ? `<span style="color:var(--text-muted);font-size:12px;margin-left:6px">${age} years old</span>` : ''}
+                  </span>
+                  <button class="pf-edit-btn" onclick="startFieldEdit('birthdate')" title="Edit Birthdate">✎</button>`;
+              })()}
+            </div>
+          </div>
+          <div class="pf-row">
+            <div class="pf-label">Verified</div>
+            <div class="pf-val-wrap">
+              <span class="pf-val">
+                ${u.email_verified === true
+                  ? '<span style="color:#6dc86d">✓ Yes</span>'
+                  : '<span style="color:var(--text-muted)">No</span>'}
+              </span>
+            </div>
+          </div>
+          <div class="pf-row">
+            <div class="pf-label">Joined</div>
+            <div class="pf-val-wrap">
+              <span class="pf-val" style="color:var(--text-muted)">${joinDate}</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -2457,6 +2699,16 @@ function startFieldEdit(field) {
     </select>`;
   } else if (field === 'bio') {
     inputHtml = `<textarea class="pf-input" id="pf-input-${field}" rows="3">${esc(currentVal)}</textarea>`;
+  } else if (field === 'pronouns') {
+    const pronounOptions = ['he/his', 'she/her', 'they/them', 'ze/zir', 'any', 'prefer not to say'];
+    inputHtml = `<div style="flex:1">
+    <input class="pf-input" id="pf-input-${field}" type="text" value="${esc(currentVal)}" style="margin-bottom:6px" />
+    <div class="pronoun-chips">
+      ${pronounOptions.map(p => `<span class="pronoun-chip${currentVal===p?' active':''}" onclick="selectPronoun('${esc(p)}')">${esc(p)}</span>`).join('')}
+    </div>
+  </div>`;
+  } else if (field === 'birthdate') {
+    inputHtml = `<input class="pf-input" id="pf-input-${field}" type="date" value="${esc(currentVal)}" />`;
   } else {
     inputHtml = `<input class="pf-input" id="pf-input-${field}" type="text" value="${esc(currentVal)}" />`;
   }
@@ -2468,7 +2720,7 @@ function startFieldEdit(field) {
 
   const input = document.getElementById(`pf-input-${field}`);
   input?.focus();
-  if (field !== 'bio' && field !== 'role') {
+  if (field !== 'bio' && field !== 'role' && field !== 'pronouns') {
     input?.addEventListener('keydown', e => {
       if (e.key === 'Enter') { e.preventDefault(); saveFieldEdit(field); }
       if (e.key === 'Escape') renderUserPanel(_panelUser);
@@ -2478,10 +2730,16 @@ function startFieldEdit(field) {
       if (e.key === 'Escape') renderUserPanel(_panelUser);
     });
   }
+  if (field === 'pronouns') {
+    input?.addEventListener('keydown', e => {
+      if (e.key === 'Escape') renderUserPanel(_panelUser);
+    });
+  }
 }
 
 async function saveFieldEdit(field) {
   if (!_panelUser) return;
+  const userId = _panelUser.id;
   const input = document.getElementById(`pf-input-${field}`);
   if (!input) return;
   const newVal = input.value.trim();
@@ -2514,7 +2772,7 @@ async function saveFieldEdit(field) {
     const label = field.replace(/_/g, ' ');
     toast(`${label.charAt(0).toUpperCase() + label.slice(1)} updated`, 'success');
     renderUserPanel(_panelUser);
-    if (['username', 'email', 'role'].includes(field)) loadUsers();
+    updateCurrentPageRow(userId);
   } catch (e) {
     console.error('saveFieldEdit error:', e);
     toast(`Failed to update ${field}: ${e.message}`, 'error');
@@ -2525,6 +2783,7 @@ async function saveFieldEdit(field) {
 
 async function panelChangeRole() {
   if (!_panelUser) return;
+  const uid = _panelUser.id;
   const role = _panelUser.role || 'user';
   showReasonModal({
     title: `Change role to "${role}"`,
@@ -2542,7 +2801,7 @@ async function panelChangeRole() {
         _panelUser.role = role;
         toast(`Role updated to ${role}`, 'success');
         renderUserPanel(_panelUser);
-        loadUsers();
+        updateCurrentPageRow(uid);
       } catch (e) {
         console.error('panelChangeRole error:', e);
         toast(`Role change failed: ${e.message}`, 'error');
@@ -2554,6 +2813,7 @@ async function panelChangeRole() {
 async function panelVerifyEmail() {
   if (!_panelUser) return;
   if (_panelUser.email_verified === true) { toast('Email is already verified', 'info'); return; }
+  const uid = _panelUser.id;
   showReasonModal({
     title: 'Manually verify email',
     chipKey: 'verify',
@@ -2571,7 +2831,7 @@ async function panelVerifyEmail() {
         if (_userAdminCache[_panelUser.username]) _userAdminCache[_panelUser.username].email_verified = true;
         toast('Email verified', 'success');
         renderUserPanel(_panelUser);
-        loadUsers();
+        updateCurrentPageRow(uid);
       } catch (e) {
         console.error('panelVerifyEmail error:', e);
         toast(`Verify failed: ${e.message}`, 'error');
@@ -2593,6 +2853,7 @@ async function panelResetPassword() {
 
 async function panelSuspend() {
   if (!_panelUser) return;
+  const uid = _panelUser.id;
   showReasonModal({
     title: `Suspend @${_panelUser.username}`,
     chipKey: 'suspend',
@@ -2610,7 +2871,7 @@ async function panelSuspend() {
         if (_userAdminCache[_panelUser.username]) _userAdminCache[_panelUser.username].is_active = false;
         toast(`${_panelUser.username} suspended`, 'success');
         renderUserPanel(_panelUser);
-        loadUsers();
+        updateCurrentPageRow(uid);
       } catch (e) {
         console.error('panelSuspend error:', e);
         toast(`Suspend failed: ${e.message}`, 'error');
@@ -2621,6 +2882,7 @@ async function panelSuspend() {
 
 async function panelUnsuspend() {
   if (!_panelUser) return;
+  const uid = _panelUser.id;
   showReasonModal({
     title: `Unsuspend @${_panelUser.username}`,
     chipKey: 'unsuspend',
@@ -2637,7 +2899,7 @@ async function panelUnsuspend() {
         if (_userAdminCache[_panelUser.username]) _userAdminCache[_panelUser.username].is_active = true;
         toast(`${_panelUser.username} unsuspended`, 'success');
         renderUserPanel(_panelUser);
-        loadUsers();
+        updateCurrentPageRow(uid);
       } catch (e) {
         console.error('panelUnsuspend error:', e);
         toast(`Unsuspend failed: ${e.message}`, 'error');
@@ -2648,6 +2910,7 @@ async function panelUnsuspend() {
 
 async function panelDelete() {
   if (!_panelUser) return;
+  const uid = _panelUser.id;
   showReasonModal({
     title: `Delete @${_panelUser.username}`,
     chipKey: 'delete',
@@ -2661,7 +2924,7 @@ async function panelDelete() {
         });
         toast(`${_panelUser.username} deleted`, 'success');
         closeUserPanel();
-        loadUsers();
+        removeCurrentPageRow(uid);
       } catch (e) {
         console.error('panelDelete error:', e);
         toast(`Delete failed: ${e.message}`, 'error');
