@@ -403,8 +403,10 @@
     .badge-admin    { background: rgba(192,57,43,.2);  color: #e57373; }
     .badge-mod      { background: rgba(59,130,246,.2); color: #60a5fa; }
     .badge-user     { background: rgba(107,101,96,.2); color: var(--text-muted); }
-    .badge-verified { background: rgba(46,125,50,.2);  color: #81c784; }
-    .badge-pending  { background: rgba(215,158,11,.2); color: #fcd34d; }
+    .badge-verified   { background: rgba(46,125,50,.2);  color: #81c784; }
+    .badge-pending    { background: rgba(215,158,11,.2); color: #fcd34d; }
+    .badge-suspended  { background: rgba(255,100,100,.2); color: #ff8080; }
+    .badge-banned     { background: rgba(120,0,0,.3);     color: #ff6666; }
 
     /* ─── BUTTONS ────────────────────────────────────────────────────── */
     .btn {
@@ -1039,6 +1041,9 @@
       <div class="nav-item" data-section="emails"    onclick="navigate('emails')">
         <span class="nav-icon">📧</span> Email Templates
       </div>
+      <div class="nav-item" data-section="banned"    onclick="navigate('banned')">
+        <span class="nav-icon">🚫</span> Banned Users
+      </div>
       <div class="nav-item" data-section="reports"   onclick="navigate('reports')">
         <span class="nav-icon">🚩</span> Reports
       </div>
@@ -1116,6 +1121,20 @@
         </div>
       </div>
       <div class="card-list" id="email-template-list"></div>
+    </div>
+
+    <!-- ── BANNED USERS ──────────────────────────────────────────── -->
+    <div class="section" id="sec-banned">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Banned Users</h1>
+          <div class="section-subtitle">Permanent bans — email, IP, and phone</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="loadBannedUsers()">↺ Refresh</button>
+      </div>
+      <div id="banned-table-wrap">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
     </div>
 
     <!-- ── REPORTS ────────────────────────────────────────────────── -->
@@ -1493,10 +1512,11 @@ function navigate(section) {
     el.classList.toggle('active', el.id === `sec-${section}`);
   });
   switch (section) {
-    case 'dashboard': loadDashboard(); break;
-    case 'users':     loadUsers();     break;
-    case 'reports':   loadReports();   break;
-    case 'movies':    loadMovies();    break;
+    case 'dashboard': loadDashboard();    break;
+    case 'users':     loadUsers();        break;
+    case 'banned':    loadBannedUsers();  break;
+    case 'reports':   loadReports();      break;
+    case 'movies':    loadMovies();       break;
   }
 }
 
@@ -1837,31 +1857,26 @@ async function fetchUsersPage() {
   wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Loading users…</div>`;
   try {
     let data, total;
+    const sortParams = `&sort_by=${encodeURIComponent(state.sortCol)}&sort_dir=${encodeURIComponent(state.sortDir)}`;
     if (state.usersFilter) {
-      // is: filter — use admin endpoint for full user data
-      const raw = await api(`/admin/users?filter=${encodeURIComponent(state.usersFilter)}&page_size=200`);
+      // is: filter — server-side pagination
+      const raw = await api(`/admin/users?filter=${encodeURIComponent(state.usersFilter)}&page=${state.usersPage}&page_size=${state.usersPageSize}${sortParams}`);
       if (!raw) return;
-      const arr = raw.users ?? raw;
-      total = raw.total ?? arr.length;
+      data  = raw.users ?? raw;
+      total = raw.total ?? data.length;
       state.usersTotal = total;
-      const ps = state.usersPageSize;
-      data = arr.slice((state.usersPage - 1) * ps, state.usersPage * ps);
-      state._filteredUsers = arr;
     } else if (state.userQuery) {
-      // Text search
-      const raw = await api(`/users/search?q=${encodeURIComponent(state.userQuery)}&page_size=200`);
+      // Text search — server-side sort + pagination
+      const raw = await api(`/users/search?q=${encodeURIComponent(state.userQuery)}&page=${state.usersPage}&page_size=${state.usersPageSize}${sortParams}`);
       if (!raw) return;
-      const arr = Array.isArray(raw) ? raw : (raw.users || raw.results || []);
-      total = arr.length;
+      data  = raw.results ?? (Array.isArray(raw) ? raw : []);
+      total = raw.total ?? data.length;
       state.usersTotal = total;
-      const ps = state.usersPageSize;
-      data = arr.slice((state.usersPage - 1) * ps, state.usersPage * ps);
-      state._filteredUsers = arr;
     } else {
-      // All users: server-side pagination with exact total from API
-      const raw = await api(`/admin/users?page=${state.usersPage}&page_size=${state.usersPageSize}`);
+      // All users: server-side pagination + sort
+      const raw = await api(`/admin/users?page=${state.usersPage}&page_size=${state.usersPageSize}${sortParams}`);
       if (!raw) return;
-      data  = raw.users  ?? raw;   // handle both {users,total} and plain array
+      data  = raw.users  ?? raw;
       const exactTotal = raw.total ?? null;
       state.usersTotal = exactTotal !== null
         ? exactTotal
@@ -1886,7 +1901,6 @@ function renderUsersTable(users, total) {
   }
   const totalUsers = total ?? users.length;
   state._currentPageData = users;
-  const sorted = sortUsers(users);
   const ps = state.usersPageSize;
   const page = state.usersPage;
   const from = (page - 1) * ps + 1;
@@ -1903,9 +1917,12 @@ function renderUsersTable(users, total) {
           <th class="sortable" onclick="setSortCol('created_at')">Joined ${sortIcon('created_at')}</th>
         </tr></thead>
         <tbody>
-          ${sorted.map(u => { _userAdminCache[u.username] = u; return `
-            <tr data-uid="${u.id}" onclick="openUserPanel('${esc(u.username)}')" style="cursor:pointer">
-              <td><strong>${esc(u.username)}</strong></td>
+          ${users.map(u => { _userAdminCache[u.username] = u;
+            const suspended = u.is_active === false;
+            const rowStyle = suspended ? 'cursor:pointer;background:rgba(255,182,193,0.10)' : 'cursor:pointer';
+            return `
+            <tr data-uid="${u.id}" onclick="openUserPanel('${esc(u.username)}')" style="${rowStyle}">
+              <td><strong>${esc(u.username)}</strong>${suspended ? ' <span class="badge badge-suspended" style="font-size:10px;padding:1px 5px;vertical-align:middle">suspended</span>' : ''}</td>
               <td style="color:var(--text-muted)">${esc(u.email||'—')}</td>
               <td>${roleBadge(u.role)}</td>
               <td>${u.email_verified === true ? '<span class="badge badge-verified">Yes</span>' : '<span class="badge badge-pending">No</span>'}</td>
@@ -2299,7 +2316,9 @@ function setSortCol(col) {
     state.sortCol = col;
     state.sortDir = 'asc';
   }
-  if (state._currentPageData) renderUsersTable(state._currentPageData, state.usersTotal);
+  state.usersPage = 1;
+  state._filteredUsers = null;
+  fetchUsersPage();
 }
 
 function sortIcon(col) {
@@ -2701,6 +2720,9 @@ function renderUserPanel(u) {
             }
             <button class="btn btn-danger" style="flex:1;justify-content:center" onclick="panelDelete()">Delete Account</button>
           </div>
+          <div class="panel-action-row" style="margin-top:8px">
+            <button class="btn btn-danger" style="flex:1;justify-content:center;background:rgba(120,0,0,.7);border-color:rgba(255,80,80,.3)" onclick="panelBan()">🚫 Permanently Ban</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2997,6 +3019,135 @@ async function panelDelete() {
       }
     },
   });
+}
+
+/* ─── BAN ────────────────────────────────────────────────────────────── */
+
+async function panelBan() {
+  if (!_panelUser) return;
+  const uid  = _panelUser.id;
+  const uname = _panelUser.username;
+
+  // Custom ban modal via reason modal + checkboxes injected after open
+  showReasonModal({
+    title: `Permanently Ban @${uname}`,
+    chipKey: 'suspend',
+    minLen: 5,
+    destructive: true,
+    onConfirm: async (reason) => {
+      const banEmail = document.getElementById('ban-opt-email')?.checked ?? true;
+      const banIp    = document.getElementById('ban-opt-ip')?.checked    ?? true;
+      try {
+        await api(`/admin/users/${uid}/ban`, {
+          method: 'POST',
+          body: JSON.stringify({ reason, ban_email: banEmail, ban_ip: banIp }),
+        });
+        _panelUser.is_active = false;
+        if (_userAdminCache[uname]) _userAdminCache[uname].is_active = false;
+        toast(`${uname} permanently banned`, 'success');
+        renderUserPanel(_panelUser);
+        updateCurrentPageRow(uid);
+      } catch (e) {
+        toast(`Ban failed: ${e.message}`, 'error');
+      }
+    },
+  });
+
+  // Inject ban option checkboxes into reason modal after it opens
+  setTimeout(() => {
+    const modal = document.getElementById('reason-modal-box');
+    if (!modal) return;
+    const existing = modal.querySelector('.ban-opts');
+    if (existing) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'ban-opts';
+    wrap.style.cssText = 'margin: 8px 0 0; display:flex; gap:16px; font-size:13px; color:var(--text-muted)';
+    wrap.innerHTML = `
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="checkbox" id="ban-opt-email" checked style="width:auto;padding:0;margin:0;border:none;background:none"> Ban email
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="checkbox" id="ban-opt-ip" checked style="width:auto;padding:0;margin:0;border:none;background:none"> Ban IP
+      </label>`;
+    const textarea = modal.querySelector('textarea');
+    if (textarea) textarea.parentNode.insertBefore(wrap, textarea);
+  }, 50);
+}
+
+/* ─── BANNED USERS SECTION ───────────────────────────────────────────── */
+
+let _bannedPage = 1;
+const _bannedPageSize = 30;
+let _bannedTotal = 0;
+
+async function loadBannedUsers() {
+  const wrap = document.getElementById('banned-table-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Loading…</div>`;
+  try {
+    const raw = await api(`/admin/banned-users?page=${_bannedPage}&page_size=${_bannedPageSize}`);
+    if (!raw) return;
+    const rows = raw.banned || [];
+    _bannedTotal = raw.total || 0;
+    renderBannedTable(rows);
+  } catch (e) {
+    wrap.innerHTML = `<div class="empty">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderBannedTable(rows) {
+  const wrap = document.getElementById('banned-table-wrap');
+  if (!rows.length) {
+    wrap.innerHTML = `<div class="empty">No banned users.</div>`;
+    return;
+  }
+  const totalPages = Math.ceil(_bannedTotal / _bannedPageSize);
+  wrap.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Email</th>
+          <th>IP Address</th>
+          <th>Phone</th>
+          <th>Reason</th>
+          <th>Banned By</th>
+          <th>Date</th>
+          <th></th>
+        </tr></thead>
+        <tbody>
+          ${rows.map(b => `
+            <tr>
+              <td>${esc(b.email || '—')}</td>
+              <td style="font-family:monospace;font-size:12px">${esc(b.ip_address || '—')}</td>
+              <td>${esc(b.phone || '—')}</td>
+              <td style="color:var(--text-muted)">${esc(b.reason || '—')}</td>
+              <td style="color:var(--text-muted)">${esc(b.banned_by_username || '—')}</td>
+              <td style="color:var(--text-muted);font-size:12px">${formatDate(b.created_at)}</td>
+              <td><button class="btn btn-ghost btn-sm" onclick="unbanEntry('${esc(b.id)}')">Lift Ban</button></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    ${totalPages > 1 ? `
+    <div class="pagination" style="justify-content:center;padding:16px 0">
+      <button class="btn btn-ghost btn-sm" ${_bannedPage <= 1 ? 'disabled' : ''} onclick="_bannedPage--;loadBannedUsers()">← Prev</button>
+      <span style="color:var(--text-muted);font-size:13px">Page ${_bannedPage} / ${totalPages}</span>
+      <button class="btn btn-ghost btn-sm" ${_bannedPage >= totalPages ? 'disabled' : ''} onclick="_bannedPage++;loadBannedUsers()">Next →</button>
+    </div>` : ''}`;
+}
+
+async function unbanEntry(banId) {
+  if (!confirm('Lift this ban and reactivate the user account?')) return;
+  try {
+    await api(`/admin/banned-users/${banId}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ reactivate: true }),
+    });
+    toast('Ban lifted', 'success');
+    loadBannedUsers();
+  } catch (e) {
+    toast(`Failed: ${e.message}`, 'error');
+  }
 }
 
 /* ─── UTILITIES ──────────────────────────────────────────────────────── */
