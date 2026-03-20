@@ -2620,7 +2620,7 @@ document.getElementById('reason-overlay').addEventListener('click', e => {
 let _panelUser = null;
 const _userAdminCache = {}; // username → full admin row (has email, email_verified, role, id)
 
-async function openUserPanel(username) {
+async function openUserPanel(username, context = {}) {
   document.getElementById('panel-title').textContent = username;
   document.getElementById('panel-body').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   document.getElementById('user-panel').classList.add('open');
@@ -2646,12 +2646,17 @@ async function openUserPanel(username) {
         following_count: profile.following_count,
       };
     }
+    // Store panel context (e.g. opened from banned list vs suspended list)
+    _panelUser._panelStatus = context.status || null;
+    _panelUser._banId       = context.ban_id || null;
     console.log('[openUserPanel] merged _panelUser:', JSON.parse(JSON.stringify(_panelUser)));
     renderUserPanel(_panelUser);
   } catch (e) {
     console.error('openUserPanel fetch error:', e);
     // Still render with whatever admin data we have
     if (_panelUser.id) {
+      _panelUser._panelStatus = context.status || null;
+      _panelUser._banId       = context.ban_id || null;
       renderUserPanel(_panelUser);
     } else {
       document.getElementById('panel-body').innerHTML = `<div class="empty">Error loading user: ${esc(e.message)}</div>`;
@@ -2672,7 +2677,8 @@ function renderUserPanel(u) {
   const reviews  = u.total_reviews    ?? '—';
   const friends  = u.follower_count   ?? '—';
   const groups   = u.groups_count     ?? '—';
-  const active   = u.is_active !== false; // default true if unknown
+  const active        = u.is_active !== false; // default true if unknown
+  const isBannedPanel = u._panelStatus === 'banned';
 
   document.getElementById('panel-body').innerHTML = `
     <!-- Tabs -->
@@ -2689,13 +2695,17 @@ function renderUserPanel(u) {
       <div class="panel-username">${esc(u.display_name || u.username)}</div>
       <div class="panel-meta" style="color:var(--text-muted)">@${esc(u.username)}</div>
       <div class="panel-meta">Joined ${joinDate}</div>
-      ${!active ? '<div class="panel-meta" style="color:#e57373;margin-top:4px">⚠ Account suspended</div>' : ''}
+      ${isBannedPanel
+        ? '<div class="panel-meta" style="color:#cc2222;margin-top:4px">⚠ This account has been permanently banned</div>'
+        : !active ? '<div class="panel-meta" style="color:#e57373;margin-top:4px">⚠ Account suspended</div>' : ''}
       <div class="panel-badges" style="margin-top:8px">
         ${roleBadge(u.role)}
         ${u.email_verified === true
           ? '<span class="badge badge-verified" style="margin-left:6px">Verified</span>'
           : '<span class="badge badge-pending" style="margin-left:6px">Unverified</span>'}
-        ${!active ? '<span class="badge" style="margin-left:6px;background:rgba(229,62,62,.2);color:#e57373">Suspended</span>' : ''}
+        ${isBannedPanel
+          ? '<span class="badge" style="margin-left:6px;background:rgba(139,0,0,.35);color:#cc2222;font-weight:700">BANNED</span>'
+          : !active ? '<span class="badge" style="margin-left:6px;background:rgba(229,62,62,.2);color:#e57373">Suspended</span>' : ''}
       </div>
 
       <div class="panel-stats">
@@ -2868,14 +2878,19 @@ function renderUserPanel(u) {
         <div class="panel-section-title">Danger Zone</div>
         <div class="panel-actions">
           <div class="panel-action-row">
-            ${active
-              ? `<button class="btn btn-danger" style="flex:1;justify-content:center" onclick="panelSuspend()">Suspend Account</button>`
-              : `<button class="btn btn-success" style="flex:1;justify-content:center" onclick="panelUnsuspend()">Unsuspend Account</button>`
+            ${isBannedPanel
+              ? `<button class="btn btn-success" style="flex:1;justify-content:center" onclick="panelUnban()">Unban</button>`
+              : active
+                ? `<button class="btn btn-danger" style="flex:1;justify-content:center" onclick="panelSuspend()">Suspend Account</button>`
+                : `<button class="btn btn-success" style="flex:1;justify-content:center" onclick="panelUnsuspend()">Unsuspend Account</button>`
             }
             <button class="btn btn-danger" style="flex:1;justify-content:center" onclick="panelDelete()">Delete Account</button>
           </div>
           <div class="panel-action-row" style="margin-top:8px">
-            <button class="btn btn-danger" style="flex:1;justify-content:center;background:rgba(120,0,0,.7);border-color:rgba(255,80,80,.3)" onclick="panelBan()">🚫 Permanently Ban</button>
+            ${isBannedPanel
+              ? `<button class="btn btn-danger" style="flex:1;justify-content:center;background:rgba(60,0,0,.35);border-color:rgba(100,40,40,.3);opacity:.5;cursor:not-allowed" disabled>🚫 Permanently Ban</button>`
+              : `<button class="btn btn-danger" style="flex:1;justify-content:center;background:rgba(120,0,0,.7);border-color:rgba(255,80,80,.3)" onclick="panelBan()">🚫 Permanently Ban</button>`
+            }
           </div>
         </div>
       </div>
@@ -3160,6 +3175,35 @@ async function panelUnsuspend() {
   });
 }
 
+async function panelUnban() {
+  if (!_panelUser) return;
+  const banId = _panelUser._banId;
+  if (!banId) { toast('Ban ID not found — cannot unban from panel', 'error'); return; }
+  showReasonModal({
+    title: `Unban @${_panelUser.username}`,
+    chipKey: 'unsuspend',
+    minLen: 5,
+    destructive: false,
+    onConfirm: async (reason) => {
+      try {
+        await api(`/admin/banned-users/${banId}`, {
+          method: 'DELETE',
+          body: JSON.stringify({ reason, reactivate: true }),
+        });
+        toast(`${_panelUser.username} unbanned`, 'success');
+        _panelUser._panelStatus = null;
+        _panelUser._banId = null;
+        _panelUser.is_active = true;
+        renderUserPanel(_panelUser);
+        loadBannedUsers();
+      } catch (e) {
+        console.error('panelUnban error:', e);
+        toast(`Unban failed: ${e.message}`, 'error');
+      }
+    },
+  });
+}
+
 async function panelDelete() {
   if (!_panelUser) return;
   const uid = _panelUser.id;
@@ -3327,7 +3371,7 @@ function renderBannedTable(rows) {
               ? `style="${rowBg};cursor:pointer" onclick="openProblemUserPanel(event, this)"`
               : `style="${rowBg}"`;
             const dataAttrs = hasUserId
-              ? `data-username="${esc(b.username || '')}" data-userid="${esc(b.user_id || '')}"`
+              ? `data-username="${esc(b.username || '')}" data-userid="${esc(b.user_id || '')}" data-ban-type="${isBanned ? 'banned' : 'suspended'}" data-ban-id="${esc(b.id || '')}"`
               : '';
 
             const actionBtn = isBanned
@@ -3404,7 +3448,9 @@ function openProblemUserPanel(event, row) {
   const userId   = row.dataset.userid;
   if (!userId) return;
   if (username) {
-    openUserPanel(username);
+    const banType = row.dataset.banType;
+    const banId   = row.dataset.banId;
+    openUserPanel(username, { status: banType, ban_id: banId });
   }
 }
 
