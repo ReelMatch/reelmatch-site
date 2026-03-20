@@ -8,320 +8,121 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --ink: #0e0c0a;
-    --paper: #f5f0e8;
-    --accent: #c0392b;
-    --accent2: #e87c35;
-    --muted: #6b6560;
-    --border: #d4cfc6;
-  }
-
+  :root { --ink: #0e0c0a; --paper: #f5f0e8; --accent: #c0392b; --muted: #6b6560; --border: #d4cfc6; }
   html { scroll-behavior: smooth; }
-
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--paper);
-    color: var(--ink);
-    overflow-x: hidden;
-  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--paper); color: var(--ink); overflow-x: hidden; }
 
   nav {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    z-index: 100;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; justify-content: space-between; align-items: center;
     padding: 1.25rem 2.5rem;
-    background: rgba(245, 240, 232, 0.92);
-    backdrop-filter: blur(12px);
+    background: rgba(245,240,232,0.92); backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
   }
-
-  .logo {
-    font-family: 'DM Serif Display', serif;
-    font-size: 1.4rem;
-    color: var(--ink);
-    text-decoration: none;
-    letter-spacing: -0.02em;
-  }
-
+  .logo { font-family: 'DM Serif Display', serif; font-size: 1.4rem; color: var(--ink); text-decoration: none; letter-spacing: -0.02em; }
   .logo span { color: var(--accent); }
-
-  nav a {
-    font-size: 0.85rem;
-    color: var(--muted);
-    text-decoration: none;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    transition: color 0.2s;
-  }
-
-  nav a:hover { color: var(--ink); }
-
   .nav-links { display: flex; gap: 2rem; align-items: center; }
-
-  .hero {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    padding: 8rem 2.5rem 4rem;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .hero::before {
-    content: '';
-    position: absolute;
-    top: -20%;
-    right: -10%;
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle, rgba(192,57,43,0.08) 0%, transparent 70%);
-    pointer-events: none;
-  }
-
-  .hero-inner {
-    max-width: 1100px;
-    margin: 0 auto;
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 4rem;
-    align-items: center;
-  }
-
-  .hero-text h1 {
-    font-family: 'DM Serif Display', serif;
-    font-size: clamp(2.8rem, 5vw, 4.5rem);
-    line-height: 1.05;
-    letter-spacing: -0.03em;
-    margin-bottom: 1.5rem;
-  }
-
-  .hero-text h1 em {
-    font-style: italic;
-    color: var(--accent);
-  }
-
-  .hero-text p {
-    font-size: 1.1rem;
-    line-height: 1.7;
-    color: var(--muted);
-    max-width: 440px;
-    margin-bottom: 2.5rem;
-  }
-
-  .hero-cta {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
+  .nav-links a { font-size: 0.85rem; color: var(--muted); text-decoration: none; letter-spacing: 0.04em; text-transform: uppercase; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--ink); }
 
   .btn-primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: var(--ink);
-    color: var(--paper);
-    padding: 0.9rem 1.8rem;
-    border-radius: 2px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    text-decoration: none;
-    letter-spacing: 0.02em;
-    transition: background 0.2s, transform 0.2s;
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: var(--ink); color: var(--paper);
+    padding: 0.9rem 1.8rem; border-radius: 2px;
+    font-size: 0.9rem; font-weight: 500; text-decoration: none; letter-spacing: 0.02em;
+    transition: background 0.2s, transform 0.2s; cursor: pointer; border: none; font-family: inherit;
   }
-
   .btn-primary:hover { background: var(--accent); transform: translateY(-1px); }
 
   .btn-secondary {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: transparent;
-    color: var(--ink);
-    padding: 0.9rem 1.8rem;
-    border-radius: 2px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    text-decoration: none;
-    letter-spacing: 0.02em;
-    border: 1px solid var(--border);
-    transition: border-color 0.2s, transform 0.2s;
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: transparent; color: var(--ink);
+    padding: 0.9rem 1.8rem; border-radius: 2px;
+    font-size: 0.9rem; font-weight: 500; text-decoration: none; letter-spacing: 0.02em;
+    border: 1px solid var(--border); transition: border-color 0.2s, transform 0.2s;
+    cursor: pointer; font-family: inherit;
   }
-
   .btn-secondary:hover { border-color: var(--ink); transform: translateY(-1px); }
 
-  .film-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.75rem;
-    position: relative;
+  .hero {
+    min-height: 100vh; display: flex; align-items: center;
+    padding: 8rem 2.5rem 4rem; position: relative; overflow: hidden;
   }
-
-  .film-card {
-    border-radius: 4px;
-    overflow: hidden;
-    background: var(--ink);
-    aspect-ratio: 2/3;
-    position: relative;
+  .hero::before {
+    content: ''; position: absolute; top: -20%; right: -10%;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(192,57,43,0.08) 0%, transparent 70%);
+    pointer-events: none;
   }
+  .hero-inner {
+    max-width: 1100px; margin: 0 auto; width: 100%;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center;
+  }
+  .hero-text h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2.8rem, 5vw, 4.5rem); line-height: 1.05;
+    letter-spacing: -0.03em; margin-bottom: 1.5rem;
+  }
+  .hero-text h1 em { font-style: italic; color: var(--accent); }
+  .hero-text p { font-size: 1.1rem; line-height: 1.7; color: var(--muted); max-width: 440px; margin-bottom: 2.5rem; }
+  .hero-cta { display: flex; gap: 1rem; flex-wrap: wrap; }
 
+  .film-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+  .film-card { border-radius: 6px; overflow: hidden; aspect-ratio: 2/3; position: relative; box-shadow: 0 8px 32px rgba(14,12,10,0.18); background: #1a1612; }
   .film-card:nth-child(2) { margin-top: 1.5rem; }
   .film-card:nth-child(3) { margin-top: 3rem; }
-
-  .film-card-inner {
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, #1a1612 0%, #2d2420 50%, #1a1612 100%);
-    display: flex;
-    align-items: flex-end;
-    padding: 1rem;
+  .film-card img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.4s ease; }
+  .film-card:hover img { transform: scale(1.04); }
+  .film-card-overlay {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(transparent, rgba(14,12,10,0.85));
+    padding: 1.5rem 0.85rem 0.85rem;
   }
-
-  .film-label {
-    font-family: 'DM Serif Display', serif;
-    font-size: 0.75rem;
-    color: rgba(245,240,232,0.6);
-    line-height: 1.3;
-  }
-
+  .film-label { font-family: 'DM Serif Display', serif; font-size: 0.8rem; color: rgba(245,240,232,0.9); line-height: 1.3; }
   .rating-pill {
-    position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
-    background: var(--accent);
-    color: white;
-    font-size: 0.7rem;
-    font-weight: 500;
-    padding: 0.2rem 0.5rem;
-    border-radius: 2px;
+    position: absolute; top: 0.75rem; right: 0.75rem;
+    background: var(--accent); color: white;
+    font-size: 0.7rem; font-weight: 500; padding: 0.2rem 0.5rem; border-radius: 2px;
   }
 
-  .features {
-    padding: 6rem 2.5rem;
-    background: var(--ink);
-    color: var(--paper);
-  }
+  .features { padding: 6rem 2.5rem; background: var(--ink); color: var(--paper); }
+  .features-inner { max-width: 1100px; margin: 0 auto; }
+  .section-label { font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 1rem; }
+  .features h2 { font-family: 'DM Serif Display', serif; font-size: clamp(2rem, 3.5vw, 3rem); line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 3rem; max-width: 600px; }
+  .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; }
+  .feature-item { padding: 2rem; border: 1px solid rgba(245,240,232,0.1); border-radius: 4px; }
+  .feature-number { font-family: 'DM Serif Display', serif; font-size: 3rem; color: rgba(192,57,43,0.3); line-height: 1; margin-bottom: 1rem; }
+  .feature-item h3 { font-family: 'DM Serif Display', serif; font-size: 1.3rem; margin-bottom: 0.75rem; }
+  .feature-item p { font-size: 0.9rem; line-height: 1.7; color: rgba(245,240,232,0.6); }
 
-  .features-inner {
-    max-width: 1100px;
-    margin: 0 auto;
-  }
-
-  .section-label {
-    font-size: 0.75rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 1rem;
-  }
-
-  .features h2 {
-    font-family: 'DM Serif Display', serif;
-    font-size: clamp(2rem, 3.5vw, 3rem);
-    line-height: 1.1;
-    letter-spacing: -0.02em;
-    margin-bottom: 3rem;
-    max-width: 600px;
-  }
-
-  .features-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 2rem;
-  }
-
-  .feature-item {
-    padding: 2rem;
-    border: 1px solid rgba(245,240,232,0.1);
-    border-radius: 4px;
-  }
-
-  .feature-number {
-    font-family: 'DM Serif Display', serif;
-    font-size: 3rem;
-    color: rgba(192,57,43,0.3);
-    line-height: 1;
-    margin-bottom: 1rem;
-  }
-
-  .feature-item h3 {
-    font-family: 'DM Serif Display', serif;
-    font-size: 1.3rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .feature-item p {
-    font-size: 0.9rem;
-    line-height: 1.7;
-    color: rgba(245,240,232,0.6);
-  }
-
-  .coming-soon {
-    padding: 6rem 2.5rem;
-    text-align: center;
-  }
-
+  .coming-soon { padding: 6rem 2.5rem; text-align: center; }
   .coming-soon-inner { max-width: 600px; margin: 0 auto; }
+  .coming-soon h2 { font-family: 'DM Serif Display', serif; font-size: clamp(2rem, 3.5vw, 3rem); letter-spacing: -0.02em; margin-bottom: 1rem; }
+  .coming-soon p { color: var(--muted); font-size: 1rem; line-height: 1.7; margin-bottom: 2rem; }
+  .store-badges { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+  .store-badge { display: inline-flex; align-items: center; gap: 0.75rem; background: var(--ink); color: var(--paper); padding: 0.8rem 1.5rem; border-radius: 4px; font-size: 0.85rem; text-decoration: none; font-weight: 500; cursor: pointer; border: none; font-family: inherit; transition: background 0.2s; }
+  .store-badge:hover { background: var(--accent); }
 
-  .coming-soon h2 {
-    font-family: 'DM Serif Display', serif;
-    font-size: clamp(2rem, 3.5vw, 3rem);
-    letter-spacing: -0.02em;
-    margin-bottom: 1rem;
-  }
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(14,12,10,0.6); z-index: 200; align-items: center; justify-content: center; padding: 1.5rem; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--paper); border-radius: 6px; padding: 2.5rem; max-width: 480px; width: 100%; position: relative; }
+  .modal h2 { font-family: 'DM Serif Display', serif; font-size: 1.8rem; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
+  .modal > div > p { font-size: 0.9rem; color: var(--muted); margin-bottom: 1.5rem; line-height: 1.6; }
+  .modal-close { position: absolute; top: 1.25rem; right: 1.25rem; background: none; border: none; font-size: 1.25rem; cursor: pointer; color: var(--muted); line-height: 1; }
+  .modal-close:hover { color: var(--ink); }
+  .form-group { margin-bottom: 1rem; }
+  .form-group label { display: block; font-size: 0.8rem; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem; }
+  .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 2px; background: white; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; color: var(--ink); outline: none; transition: border-color 0.2s; }
+  .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--ink); }
+  .form-group textarea { resize: vertical; min-height: 100px; }
+  .form-submit { width: 100%; padding: 0.9rem; background: var(--ink); color: var(--paper); border: none; border-radius: 2px; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: background 0.2s; margin-top: 0.5rem; }
+  .form-submit:hover { background: var(--accent); }
 
-  .coming-soon p {
-    color: var(--muted);
-    font-size: 1rem;
-    line-height: 1.7;
-    margin-bottom: 2rem;
-  }
-
-  .store-badges {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .store-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.75rem;
-    background: var(--ink);
-    color: var(--paper);
-    padding: 0.8rem 1.5rem;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    text-decoration: none;
-    font-weight: 500;
-  }
-
-  footer {
-    padding: 2.5rem;
-    border-top: 1px solid var(--border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: gap;
-    gap: 1rem;
-  }
-
+  footer { padding: 2.5rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
   footer p { font-size: 0.8rem; color: var(--muted); }
-
   footer nav { display: flex; gap: 1.5rem; }
-
-  footer nav a {
-    font-size: 0.8rem;
-    color: var(--muted);
-    text-decoration: none;
-  }
-
+  footer nav a { font-size: 0.8rem; color: var(--muted); text-decoration: none; }
   footer nav a:hover { color: var(--ink); }
 
   @media (max-width: 768px) {
@@ -339,11 +140,51 @@
 <nav>
   <a href="/" class="logo">Reel<span>Match</span></a>
   <div class="nav-links">
-    <a href="/privacy">Privacy</a>
-    <a href="/terms">Terms</a>
-    <a href="mailto:support@reelmatch.live">Contact</a>
+    <a href="/privacy.html">Privacy</a>
+    <a href="/terms.html">Terms</a>
+    <button class="btn-secondary" style="padding:0.5rem 1rem;font-size:0.8rem;" onclick="openModal()">Contact</button>
   </div>
 </nav>
+
+<!-- Contact Modal -->
+<div class="modal-overlay" id="modal" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">&#x2715;</button>
+    <div id="form-wrap">
+      <h2>Get in touch</h2>
+      <p>We read every message. Replies come from <strong>support@reelmatch.live</strong></p>
+      <form id="contact-form" onsubmit="submitForm(event)">
+        <div class="form-group">
+          <label>Your name</label>
+          <input type="text" name="name" required placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label>Email address</label>
+          <input type="email" name="email" required placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label>Subject</label>
+          <select name="subject">
+            <option value="General">General enquiry</option>
+            <option value="Notify" id="notify-option">Notify me at launch</option>
+            <option value="Press">Press &amp; partnerships</option>
+            <option value="Bug">Report a bug</option>
+            <option value="Privacy">Privacy request</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Message</label>
+          <textarea name="message" placeholder="Tell us what's on your mind..."></textarea>
+        </div>
+        <button type="submit" class="form-submit">Send message &rarr;</button>
+      </form>
+    </div>
+    <div id="form-success" style="display:none;text-align:center;padding:2rem 0;">
+      <p style="font-family:'DM Serif Display',serif;font-size:1.5rem;color:var(--ink);margin-bottom:0.5rem;">Message sent!</p>
+      <span style="font-size:0.9rem;color:var(--muted);">We'll get back to you shortly.</span>
+    </div>
+  </div>
+</div>
 
 <section class="hero">
   <div class="hero-inner">
@@ -352,27 +193,24 @@
       <p>ReelMatch uses a sophisticated recommendation engine to find films perfectly matched to your taste — and the taste of everyone in the room.</p>
       <div class="hero-cta">
         <a href="#coming-soon" class="btn-primary">Coming Soon</a>
-        <a href="mailto:support@reelmatch.live" class="btn-secondary">Get in Touch</a>
+        <button class="btn-secondary" onclick="openModal()">Get in Touch</button>
       </div>
     </div>
     <div class="film-grid">
       <div class="film-card">
-        <div class="film-card-inner">
-          <div class="film-label">The Godfather<br>1972</div>
-        </div>
-        <div class="rating-pill">9.5</div>
+        <img src="https://image.tmdb.org/t/p/w500/v6wKc4XMMLVJRSqbNq7KAgpHOEh.jpg" alt="Kill Bill: Vol. 1" loading="lazy">
+        <div class="film-card-overlay"><div class="film-label">Kill Bill: Vol. 1<br>2003</div></div>
+        <div class="rating-pill">10.0</div>
       </div>
       <div class="film-card">
-        <div class="film-card-inner">
-          <div class="film-label">Chinatown<br>1974</div>
-        </div>
-        <div class="rating-pill">9.0</div>
+        <img src="https://image.tmdb.org/t/p/w500/tFXcEccSQMf3lfhfXKSU9iRBpa3.jpg" alt="Get Out" loading="lazy">
+        <div class="film-card-overlay"><div class="film-label">Get Out<br>2017</div></div>
+        <div class="rating-pill">10.0</div>
       </div>
       <div class="film-card">
-        <div class="film-card-inner">
-          <div class="film-label">Parasite<br>2019</div>
-        </div>
-        <div class="rating-pill">8.5</div>
+        <img src="https://image.tmdb.org/t/p/w500/r7vmZjiyZw9rpJMQJdXpjgiCOk9.jpg" alt="Guardians of the Galaxy" loading="lazy">
+        <div class="film-card-overlay"><div class="film-label">Guardians of the Galaxy<br>2014</div></div>
+        <div class="rating-pill">10.0</div>
       </div>
     </div>
   </div>
@@ -386,7 +224,7 @@
       <div class="feature-item">
         <div class="feature-number">01</div>
         <h3>Rate what you've seen</h3>
-        <p>Score movies on a 0–10 scale. Import your existing ratings from Letterboxd, IMDb, or Trakt in seconds.</p>
+        <p>Score movies on a 0&ndash;10 scale. Import your existing ratings from Letterboxd, IMDb, or Trakt in seconds.</p>
       </div>
       <div class="feature-item">
         <div class="feature-number">02</div>
@@ -396,7 +234,7 @@
       <div class="feature-item">
         <div class="feature-number">03</div>
         <h3>Movie night, solved</h3>
-        <p>Create a group with friends. ReelMatch finds the films everyone will enjoy — no more 45 minutes of indecision.</p>
+        <p>Create a group with friends. ReelMatch finds the films everyone will enjoy &mdash; no more 45 minutes of indecision.</p>
       </div>
       <div class="feature-item">
         <div class="feature-number">04</div>
@@ -411,24 +249,55 @@
   <div class="coming-soon-inner">
     <p class="section-label">Coming Soon</p>
     <h2>Available soon on iOS and Android.</h2>
-    <p>ReelMatch is currently in development. Leave your email to be notified at launch.</p>
+    <p>ReelMatch is currently in development. Leave your email and we'll notify you the moment it launches.</p>
     <div class="store-badges">
-      <a href="mailto:support@reelmatch.live?subject=Notify me at launch" class="store-badge">
-        Notify me at launch →
-      </a>
+      <button class="store-badge" onclick="openModal('notify')">Notify me at launch &rarr;</button>
     </div>
   </div>
 </section>
 
 <footer>
-  <p>© 2026 ReelMatch. All rights reserved.</p>
+  <p>&copy; 2026 ReelMatch. All rights reserved.</p>
   <nav>
-    <a href="/privacy">Privacy Policy</a>
-    <a href="/terms">Terms of Service</a>
-    <a href="/contact">Contact</a>
-    <a href="mailto:support@reelmatch.live">support@reelmatch.live</a>
+    <a href="/privacy.html">Privacy Policy</a>
+    <a href="/terms.html">Terms of Service</a>
+    <a href="/contact.html">Contact</a>
   </nav>
 </footer>
+
+<script>
+  function openModal(type) {
+    document.getElementById('modal').classList.add('open');
+    if (type === 'notify') document.getElementById('notify-option').selected = true;
+  }
+  function closeModal() {
+    document.getElementById('modal').classList.remove('open');
+  }
+  function closeModalOutside(e) {
+    if (e.target === document.getElementById('modal')) closeModal();
+  }
+  function submitForm(e) {
+    e.preventDefault();
+    const data = new FormData(document.getElementById('contact-form'));
+    const name = data.get('name');
+    const email = data.get('email');
+    const subject = data.get('subject');
+    const message = data.get('message') || '(no message)';
+    const mailto = 'mailto:support@reelmatch.live?subject=' + encodeURIComponent('[ReelMatch] ' + subject + ' from ' + name) + '&body=' + encodeURIComponent('Name: ' + name + '\nEmail: ' + email + '\n\n' + message);
+    window.location.href = mailto;
+    document.getElementById('form-wrap').style.display = 'none';
+    document.getElementById('form-success').style.display = 'block';
+    setTimeout(() => {
+      closeModal();
+      setTimeout(() => {
+        document.getElementById('form-wrap').style.display = 'block';
+        document.getElementById('form-success').style.display = 'none';
+        document.getElementById('contact-form').reset();
+      }, 300);
+    }, 3000);
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
 
 </body>
 </html>
