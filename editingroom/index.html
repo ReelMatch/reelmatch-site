@@ -4846,6 +4846,74 @@ function _renderContent(d) {
   if (prov.length)          _doughnutChart('chart-providers', prov.map(x=>x.provider_name), prov.map(x=>x.user_count));
   if (rdist.length)         _barChart('chart-rdist', rdist.map(x=>x.rating_value), rdist.map(x=>x.count));
   if (decadeLabels.length)  _barChart('chart-decades', decadeLabels, decadeVals);
+
+  // Init carousel after render
+  requestAnimationFrame(_initGenreCarousel);
+}
+
+function _initGenreCarousel() {
+  const row = document.getElementById('genre-scroll-row');
+  const outer = document.getElementById('genre-scroll-outer');
+  const dotsEl = document.getElementById('genre-scroll-dots');
+  const btnL = document.getElementById('genre-btn-left');
+  const btnR = document.getElementById('genre-btn-right');
+  if (!row || !outer || !dotsEl) return;
+
+  const cardW = 180 + 12; // card width + gap
+  const visibleCount = () => Math.floor(outer.offsetWidth / cardW);
+  const totalCards = row.children.length;
+
+  // Build dots
+  const numDots = Math.max(1, Math.ceil(totalCards / 3));
+  dotsEl.innerHTML = Array.from({length: numDots}, (_, i) =>
+    `<div class="genre-scroll-dot${i===0?' active':''}" onclick="_genreScrollToDot(${i})"></div>`
+  ).join('');
+
+  _updateGenreCarouselState();
+
+  row.addEventListener('scroll', () => {
+    _updateGenreCarouselState();
+  }, {passive: true});
+}
+
+function _updateGenreCarouselState() {
+  const row = document.getElementById('genre-scroll-row');
+  const outer = document.getElementById('genre-scroll-outer');
+  const dotsEl = document.getElementById('genre-scroll-dots');
+  const btnL = document.getElementById('genre-btn-left');
+  const btnR = document.getElementById('genre-btn-right');
+  if (!row || !outer) return;
+
+  const cardW = 180 + 12;
+  const scrollLeft = row.scrollLeft;
+  const maxScroll = row.scrollWidth - outer.offsetWidth;
+
+  if (btnL) btnL.disabled = scrollLeft <= 0;
+  if (btnR) btnR.disabled = scrollLeft >= maxScroll - 1;
+
+  // Update active dot
+  if (dotsEl) {
+    const dotIdx = Math.round(scrollLeft / (cardW * 3));
+    dotsEl.querySelectorAll('.genre-scroll-dot').forEach((d, i) => {
+      d.classList.toggle('active', i === dotIdx);
+    });
+  }
+}
+
+function _genreScroll(dir) {
+  const row = document.getElementById('genre-scroll-row');
+  if (!row) return;
+  const cardW = 180 + 12;
+  row.scrollBy({ left: dir * cardW * 3, behavior: 'smooth' });
+  setTimeout(_updateGenreCarouselState, 350);
+}
+
+function _genreScrollToDot(dotIdx) {
+  const row = document.getElementById('genre-scroll-row');
+  if (!row) return;
+  const cardW = 180 + 12;
+  row.scrollTo({ left: dotIdx * cardW * 3, behavior: 'smooth' });
+  setTimeout(_updateGenreCarouselState, 350);
 }
 
 function _toggleGenreCard(idx) {
@@ -4857,7 +4925,7 @@ function _toggleGenreCard(idx) {
     _openGenreIdx = null;
     document.getElementById(`genre-card-${idx}`).classList.remove('open');
     panel.classList.remove('open');
-    panel.innerHTML = '';
+    setTimeout(() => { panel.innerHTML = ''; }, 310);
     return;
   }
 
@@ -4873,23 +4941,28 @@ function _toggleGenreCard(idx) {
   const entry = topPG[idx];
   if (!entry) { panel.classList.remove('open'); return; }
 
+  const TMDB_IMG = 'https://image.tmdb.org/t/p/w92';
   const movies = entry.movies || [];
+  const movieCards = movies.length ? movies.map(m => {
+    const posterHTML = m.poster_path
+      ? `<img class="genre-panel-poster" src="${TMDB_IMG}${esc(m.poster_path)}" alt="${esc(m.title)}" loading="lazy">`
+      : `<div class="genre-panel-poster-placeholder">🎬</div>`;
+    return `<div class="genre-panel-movie">
+      ${posterHTML}
+      <div class="genre-panel-title">${esc(m.title)}</div>
+      <div class="genre-panel-year">${m.year || '—'}</div>
+      <div class="genre-panel-stars">${renderStars(m.avg_rating)} ${m.avg_rating}</div>
+    </div>`;
+  }).join('') : '<p style="color:var(--text-muted);font-size:13px">No qualifying movies (min. 3 ratings).</p>';
+
   panel.innerHTML = `
-    <div style="padding:10px 14px 4px;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.7px">
-      Top movies — ${esc(entry.genre)}
+    <div class="genre-panel-inner">
+      <div class="genre-panel-heading">
+        ${esc(entry.genre)}
+        <span class="genre-panel-link">View all ${esc(entry.genre)} movies &rarr;</span>
+      </div>
+      <div class="genre-panel-movies">${movieCards}</div>
     </div>
-    <table>
-      <thead><tr><th>#</th><th>Title</th><th>Year</th><th>Avg Rating</th><th>Ratings</th></tr></thead>
-      <tbody>
-        ${movies.map((m, i) => `<tr>
-          <td style="color:var(--text-muted)">${i+1}</td>
-          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.title)}</td>
-          <td style="color:var(--text-muted)">${m.year||'—'}</td>
-          <td style="color:#f5a623">${m.avg_rating}★</td>
-          <td>${_fmt(m.rating_count)}</td>
-        </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No data</td></tr>'}
-      </tbody>
-    </table>
   `;
   panel.classList.add('open');
 
