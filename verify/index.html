@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verify Email — ReelMatch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      font-family: 'DM Sans', sans-serif;
+      background: #0e0c0a;
+      color: #f5f0e8;
+      font-size: 14px;
+    }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: #1a1612;
+      border: 1px solid rgba(245,240,232,0.1);
+      border-radius: 16px;
+      padding: 48px 40px;
+      text-align: center;
+    }
+    .logo {
+      font-family: 'DM Serif Display', serif;
+      font-size: 26px;
+      font-weight: 400;
+      margin-bottom: 4px;
+    }
+    .logo span { color: #c0392b; }
+    .logo-sub {
+      font-family: 'DM Serif Display', serif;
+      font-style: italic;
+      color: #6b6560;
+      font-size: 14px;
+      margin-bottom: 36px;
+    }
+    h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 22px;
+      font-weight: 400;
+      margin-bottom: 12px;
+    }
+    .msg {
+      margin-top: 16px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .msg-error   { background: rgba(192,57,43,.15); color: #e57373; border: 1px solid rgba(192,57,43,.3); }
+    .msg-success { background: rgba(39,174,96,.12); color: #6fcf97; border: 1px solid rgba(39,174,96,.25); }
+    .spinner-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 8px 0 4px;
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid rgba(245,240,232,0.12);
+      border-top-color: #c0392b;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    .spinner-label { color: #6b6560; font-size: 13px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .btn-open {
+      display: inline-block;
+      margin-top: 22px;
+      padding: 12px 32px;
+      background: #c0392b;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: .3px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity .2s;
+    }
+    .btn-open:hover { opacity: .85; }
+    .back-link {
+      display: block;
+      margin-top: 18px;
+      color: #6b6560;
+      font-size: 13px;
+      text-decoration: none;
+    }
+    .back-link:hover { color: #f5f0e8; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">Reel<span>Match</span></div>
+    <div class="logo-sub">the editing room</div>
+
+    <div id="content">
+      <h2>Verifying Email</h2>
+      <div class="spinner-wrap">
+        <div class="spinner"></div>
+        <span class="spinner-label">Checking your link…</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = 'https://web-production-d11a6.up.railway.app';
+    const token = new URLSearchParams(window.location.search).get('token');
+    const content = document.getElementById('content');
+
+    function showSuccess() {
+      content.innerHTML = `
+        <h2>Email Verified!</h2>
+        <div class="msg msg-success">
+          Welcome to ReelMatch. Your email has been confirmed and your account is active.
+        </div>
+        <a class="btn-open" href="https://reelmatch.live">Open App</a>`;
+    }
+
+    function showExpired() {
+      content.innerHTML = `
+        <h2>Link Expired</h2>
+        <div class="msg msg-error">
+          This verification link has expired or has already been used. Please request a new verification email from the app.
+        </div>
+        <a class="back-link" href="https://reelmatch.live">← Back to ReelMatch</a>`;
+    }
+
+    function showError(msg) {
+      content.innerHTML = `
+        <h2>Verification Failed</h2>
+        <div class="msg msg-error">${msg}</div>
+        <a class="back-link" href="https://reelmatch.live">← Back to ReelMatch</a>`;
+    }
+
+    async function verify() {
+      if (!token) {
+        showError('Invalid verification link. Please use the link from your email.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API}/auth/verify-email?token=${encodeURIComponent(token)}`);
+
+        if (res.ok) {
+          showSuccess();
+          return;
+        }
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.status === 400) {
+          showExpired();
+        } else {
+          const detail = Array.isArray(data.detail)
+            ? data.detail.map(d => d.msg || JSON.stringify(d)).join('; ')
+            : (data.detail || `Error ${res.status}`);
+          showError(detail);
+        }
+      } catch (e) {
+        showError('Network error. Please check your connection and try again.');
+      }
+    }
+
+    verify();
+  </script>
+</body>
+</html>

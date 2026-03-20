@@ -767,6 +767,51 @@
     }
     .danger-zone .panel-section-title { color: #e57373; }
 
+    /* ─── INLINE FIELD EDITING ──────────────────────────────────────── */
+    .pf-grid { display: flex; flex-direction: column; }
+    .pf-row {
+      display: flex; align-items: flex-start;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+    }
+    .pf-row:last-child { border-bottom: none; }
+    .pf-label {
+      width: 100px; flex-shrink: 0; padding-top: 2px;
+      font-size: 11px; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: .5px;
+    }
+    .pf-val-wrap { flex: 1; display: flex; align-items: flex-start; gap: 6px; min-width: 0; }
+    .pf-val { flex: 1; font-size: 13px; word-break: break-word; min-width: 0; color: var(--text-primary); }
+    .pf-val.empty { color: var(--text-muted); font-style: italic; }
+    .pf-edit-btn {
+      opacity: 0; background: none; border: none; color: var(--text-muted);
+      font-size: 13px; padding: 0 3px; line-height: 1; cursor: pointer;
+      flex-shrink: 0; transition: opacity .15s, color .15s;
+    }
+    .pf-val-wrap:hover .pf-edit-btn { opacity: 1; }
+    .pf-edit-btn:hover { color: var(--accent); }
+    .pf-input {
+      flex: 1; width: 100%; padding: 5px 8px;
+      font-size: 13px; font-family: inherit;
+      background: var(--bg-primary); color: var(--text-primary);
+      border: 1px solid var(--accent); border-radius: 5px; outline: none;
+    }
+    textarea.pf-input { resize: vertical; min-height: 60px; }
+    select.pf-input { cursor: pointer; }
+    .pf-edit-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .pf-save-btn {
+      background: none; border: 1px solid rgba(100,200,100,.4); color: #6dc86d;
+      border-radius: 4px; padding: 2px 7px; font-size: 15px; cursor: pointer;
+      transition: background .15s;
+    }
+    .pf-save-btn:hover { background: rgba(100,200,100,.1); }
+    .pf-save-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .pf-cancel-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      border-radius: 4px; padding: 2px 7px; font-size: 15px; cursor: pointer;
+      transition: background .15s;
+    }
+    .pf-cancel-btn:hover { background: var(--bg-hover); }
+
     /* ─── USERS PAGINATION ───────────────────────────────────────────── */
     .pagination-wrap {
       display: flex; align-items: center; justify-content: space-between;
@@ -2268,8 +2313,8 @@ function renderUserPanel(u) {
       <div class="panel-avatar">
         ${u.avatar_url ? `<img src="${esc(u.avatar_url)}" alt="" />` : initials}
       </div>
-      <div class="panel-username">${esc(u.username)}</div>
-      <div class="panel-meta">${esc(u.email || '—')}</div>
+      <div class="panel-username">${esc(u.display_name || u.username)}</div>
+      <div class="panel-meta" style="color:var(--text-muted)">@${esc(u.username)}</div>
       <div class="panel-meta">Joined ${joinDate}</div>
       ${!active ? '<div class="panel-meta" style="color:#e57373;margin-top:4px">⚠ Account suspended</div>' : ''}
       <div class="panel-badges" style="margin-top:8px">
@@ -2287,18 +2332,31 @@ function renderUserPanel(u) {
         <div class="panel-stat"><div class="panel-stat-n">${groups}</div><div class="panel-stat-l">Groups</div></div>
       </div>
 
+      <!-- Editable Profile Fields -->
+      <div class="panel-section">
+        <div class="panel-section-title">Profile</div>
+        <div class="pf-grid">
+          ${[
+            ['display_name', 'Name',     u.display_name],
+            ['username',     'Username', u.username],
+            ['email',        'Email',    u.email],
+            ['bio',          'Bio',      u.bio],
+            ['role',         'Role',     u.role],
+          ].map(([field, label, val]) => `
+            <div class="pf-row">
+              <div class="pf-label">${label}</div>
+              <div class="pf-val-wrap" id="pf-${field}">
+                <span class="pf-val${!val ? ' empty' : ''}">${esc(val || '—')}</span>
+                <button class="pf-edit-btn" onclick="startFieldEdit('${field}')" title="Edit ${label}">✎</button>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>
+
       <!-- Account Actions -->
       <div class="panel-section">
         <div class="panel-section-title">Account Actions</div>
         <div class="panel-actions">
-          <div class="panel-action-row">
-            <select id="panel-role-select" class="role-select" style="flex:1">
-              <option value="user"${u.role==='user'?' selected':''}>user</option>
-              <option value="moderator"${u.role==='moderator'?' selected':''}>moderator</option>
-              <option value="admin"${u.role==='admin'?' selected':''}>admin</option>
-            </select>
-            <button class="btn btn-ghost" onclick="panelChangeRole()">Change Role</button>
-          </div>
           <div class="panel-action-row">
             <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="panelVerifyEmail()">
               ${u.email_verified === true ? '✓ Email Already Verified' : 'Verify Email Manually'}
@@ -2383,9 +2441,91 @@ async function loadModLog(userId) {
   }
 }
 
+/* ─── INLINE FIELD EDITING ───────────────────────────────────────────── */
+
+function startFieldEdit(field) {
+  if (!_panelUser) return;
+  const currentVal = _panelUser[field] || '';
+  const wrap = document.getElementById(`pf-${field}`);
+  if (!wrap) return;
+
+  let inputHtml;
+  if (field === 'role') {
+    const roles = ['user', 'moderator', 'admin'];
+    inputHtml = `<select class="pf-input" id="pf-input-${field}">
+      ${roles.map(r => `<option value="${r}"${currentVal===r?' selected':''}>${r}</option>`).join('')}
+    </select>`;
+  } else if (field === 'bio') {
+    inputHtml = `<textarea class="pf-input" id="pf-input-${field}" rows="3">${esc(currentVal)}</textarea>`;
+  } else {
+    inputHtml = `<input class="pf-input" id="pf-input-${field}" type="text" value="${esc(currentVal)}" />`;
+  }
+
+  wrap.innerHTML = `${inputHtml}<div class="pf-edit-actions">
+    <button class="pf-save-btn" id="pf-save-${field}" onclick="saveFieldEdit('${field}')">✓</button>
+    <button class="pf-cancel-btn" onclick="renderUserPanel(_panelUser)">×</button>
+  </div>`;
+
+  const input = document.getElementById(`pf-input-${field}`);
+  input?.focus();
+  if (field !== 'bio' && field !== 'role') {
+    input?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); saveFieldEdit(field); }
+      if (e.key === 'Escape') renderUserPanel(_panelUser);
+    });
+  } else if (field === 'bio') {
+    input?.addEventListener('keydown', e => {
+      if (e.key === 'Escape') renderUserPanel(_panelUser);
+    });
+  }
+}
+
+async function saveFieldEdit(field) {
+  if (!_panelUser) return;
+  const input = document.getElementById(`pf-input-${field}`);
+  if (!input) return;
+  const newVal = input.value.trim();
+  const originalVal = _panelUser[field] || '';
+
+  if (newVal === originalVal) { renderUserPanel(_panelUser); return; }
+
+  const saveBtn = document.getElementById(`pf-save-${field}`);
+  if (saveBtn) saveBtn.disabled = true;
+  input.disabled = true;
+
+  try {
+    const res = await api(`/admin/users/${_panelUser.id}/edit`, {
+      method: 'PUT',
+      body: JSON.stringify({ field, value: newVal }),
+    });
+    console.log('saveFieldEdit: saved', field, '=', newVal, res);
+
+    // Update cached user data
+    _panelUser[field] = newVal;
+    const cacheKey = Object.keys(_userAdminCache).find(k => _userAdminCache[k].id === _panelUser.id);
+    if (cacheKey) _userAdminCache[cacheKey][field] = newVal;
+    // If username changed, re-key the cache
+    if (field === 'username' && cacheKey && cacheKey !== newVal) {
+      _userAdminCache[newVal] = { ..._userAdminCache[cacheKey], username: newVal };
+      delete _userAdminCache[cacheKey];
+      document.getElementById('panel-title').textContent = newVal;
+    }
+
+    const label = field.replace(/_/g, ' ');
+    toast(`${label.charAt(0).toUpperCase() + label.slice(1)} updated`, 'success');
+    renderUserPanel(_panelUser);
+    if (['username', 'email', 'role'].includes(field)) loadUsers();
+  } catch (e) {
+    console.error('saveFieldEdit error:', e);
+    toast(`Failed to update ${field}: ${e.message}`, 'error');
+    input.disabled = false;
+    if (saveBtn) saveBtn.disabled = false;
+  }
+}
+
 async function panelChangeRole() {
   if (!_panelUser) return;
-  const role = document.getElementById('panel-role-select').value;
+  const role = _panelUser.role || 'user';
   showReasonModal({
     title: `Change role to "${role}"`,
     chipKey: 'role_change',

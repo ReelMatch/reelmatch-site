@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reset Password — ReelMatch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      font-family: 'DM Sans', sans-serif;
+      background: #0e0c0a;
+      color: #f5f0e8;
+      font-size: 14px;
+    }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: #1a1612;
+      border: 1px solid rgba(245,240,232,0.1);
+      border-radius: 16px;
+      padding: 48px 40px;
+      text-align: center;
+    }
+    .logo {
+      font-family: 'DM Serif Display', serif;
+      font-size: 26px;
+      font-weight: 400;
+      margin-bottom: 4px;
+    }
+    .logo span { color: #c0392b; }
+    .logo-sub {
+      font-family: 'DM Serif Display', serif;
+      font-style: italic;
+      color: #6b6560;
+      font-size: 14px;
+      margin-bottom: 36px;
+    }
+    h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 22px;
+      font-weight: 400;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      color: #6b6560;
+      font-size: 13px;
+      margin-bottom: 28px;
+    }
+    .field { margin-bottom: 14px; text-align: left; }
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #6b6560;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 6px;
+    }
+    .field input {
+      width: 100%;
+      padding: 11px 14px;
+      background: #0e0c0a;
+      color: #f5f0e8;
+      border: 1px solid rgba(245,240,232,0.12);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .field input:focus { border-color: #c0392b; }
+    .field-hint {
+      font-size: 12px;
+      color: #c0392b;
+      margin-top: 5px;
+      min-height: 16px;
+    }
+    .btn-submit {
+      width: 100%;
+      padding: 12px;
+      background: #c0392b;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: .3px;
+      margin-top: 8px;
+      cursor: pointer;
+      transition: opacity .2s;
+    }
+    .btn-submit:hover { opacity: .85; }
+    .btn-submit:disabled { opacity: .45; cursor: not-allowed; }
+    .msg {
+      margin-top: 20px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .msg-error   { background: rgba(192,57,43,.15); color: #e57373; border: 1px solid rgba(192,57,43,.3); }
+    .msg-success { background: rgba(39,174,96,.12); color: #6fcf97; border: 1px solid rgba(39,174,96,.25); }
+    .spinner-wrap { display: flex; justify-content: center; padding: 12px 0; }
+    .spinner {
+      width: 24px; height: 24px;
+      border: 2px solid rgba(245,240,232,0.15);
+      border-top-color: #c0392b;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .back-link {
+      display: block;
+      margin-top: 20px;
+      color: #6b6560;
+      font-size: 13px;
+      text-decoration: none;
+    }
+    .back-link:hover { color: #f5f0e8; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">Reel<span>Match</span></div>
+    <div class="logo-sub">the editing room</div>
+
+    <div id="content"></div>
+  </div>
+
+  <script>
+    const API = 'https://web-production-d11a6.up.railway.app';
+    const token = new URLSearchParams(window.location.search).get('token');
+    const content = document.getElementById('content');
+
+    function showError(msg) {
+      content.innerHTML = `
+        <h2>Password Reset</h2>
+        <div class="msg msg-error">${msg}</div>
+        <a class="back-link" href="https://reelmatch.live">← Back to ReelMatch</a>`;
+    }
+
+    function showSuccess() {
+      content.innerHTML = `
+        <h2>Password Updated</h2>
+        <div class="msg msg-success">
+          Password updated successfully. You can now log in.
+        </div>
+        <a class="back-link" href="https://reelmatch.live">← Open ReelMatch</a>`;
+    }
+
+    function renderForm() {
+      content.innerHTML = `
+        <h2>Reset Password</h2>
+        <p class="subtitle">Enter your new password below.</p>
+        <div class="field">
+          <label>New Password</label>
+          <input type="password" id="pw1" placeholder="Min 8 characters" minlength="8" autocomplete="new-password" oninput="validate()" />
+        </div>
+        <div class="field">
+          <label>Confirm Password</label>
+          <input type="password" id="pw2" placeholder="Repeat password" autocomplete="new-password" oninput="validate()" onkeydown="if(event.key==='Enter')submit()" />
+          <div class="field-hint" id="match-hint"></div>
+        </div>
+        <button class="btn-submit" id="submit-btn" disabled onclick="submit()">Reset Password</button>
+        <div id="form-msg"></div>`;
+    }
+
+    function validate() {
+      const pw1 = document.getElementById('pw1')?.value || '';
+      const pw2 = document.getElementById('pw2')?.value || '';
+      const hint = document.getElementById('match-hint');
+      const btn = document.getElementById('submit-btn');
+      if (!hint || !btn) return;
+      if (pw2.length > 0 && pw1 !== pw2) {
+        hint.textContent = 'Passwords do not match';
+        btn.disabled = true;
+      } else {
+        hint.textContent = '';
+        btn.disabled = (pw1.length < 8 || pw2.length < 8 || pw1 !== pw2);
+      }
+    }
+
+    async function submit() {
+      const pw1 = document.getElementById('pw1')?.value || '';
+      const pw2 = document.getElementById('pw2')?.value || '';
+      if (pw1 !== pw2 || pw1.length < 8) return;
+
+      const btn = document.getElementById('submit-btn');
+      const msgEl = document.getElementById('form-msg');
+      btn.disabled = true;
+      btn.textContent = 'Resetting…';
+      if (msgEl) msgEl.innerHTML = '';
+
+      try {
+        const res = await fetch(`${API}/auth/reset-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, new_password: pw1 }),
+        });
+
+        if (res.ok) {
+          showSuccess();
+          return;
+        }
+
+        const data = await res.json().catch(() => ({}));
+        const detail = Array.isArray(data.detail)
+          ? data.detail.map(d => d.msg || JSON.stringify(d)).join('; ')
+          : (data.detail || `Error ${res.status}`);
+
+        if (res.status === 400) {
+          if (msgEl) msgEl.innerHTML = `<div class="msg msg-error">This link has expired or is invalid. Please request a new password reset.</div>`;
+        } else {
+          if (msgEl) msgEl.innerHTML = `<div class="msg msg-error">${detail}</div>`;
+        }
+        btn.disabled = false;
+        btn.textContent = 'Reset Password';
+      } catch (e) {
+        if (msgEl) msgEl.innerHTML = `<div class="msg msg-error">Network error. Please try again.</div>`;
+        btn.disabled = false;
+        btn.textContent = 'Reset Password';
+      }
+    }
+
+    // Init
+    if (!token) {
+      showError('Invalid reset link. Please request a new password reset from the app.');
+    } else {
+      renderForm();
+    }
+  </script>
+</body>
+</html>
