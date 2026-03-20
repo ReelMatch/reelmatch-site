@@ -4722,12 +4722,28 @@ function _renderEngagement(d) {
 }
 
 /* ── Content ── */
+let _openGenreIdx = null;
+
 function _renderContent(d) {
-  const wrap = document.getElementById('analytics-content');
+  const wrap   = document.getElementById('analytics-content');
   const rated  = d.most_rated_movies || [];
   const watch  = d.most_watchlisted  || [];
   const prov   = (d.streaming_provider_popularity || []).slice(0, 8);
   const rdist  = d.ratings_distribution || [];
+  const genres = d.most_rated_genres   || [];
+  const topPG  = d.top_movies_per_genre || [];
+  const years  = d.most_rated_years    || [];
+  _openGenreIdx = null;
+
+  // Build decade buckets from year data for bar chart
+  const decadeBuckets = {};
+  years.forEach(y => {
+    const dec = Math.floor(parseInt(y.year, 10) / 10) * 10;
+    const k = `${dec}s`;
+    decadeBuckets[k] = (decadeBuckets[k] || 0) + y.total_ratings;
+  });
+  const decadeLabels = Object.keys(decadeBuckets).sort();
+  const decadeVals   = decadeLabels.map(k => decadeBuckets[k]);
 
   wrap.innerHTML = `
     <div class="analytics-two-col">
@@ -4770,10 +4786,84 @@ function _renderContent(d) {
         <div class="analytics-subhead">Rating Distribution</div>
         <canvas id="chart-rdist"></canvas>
       </div>
-    </div>`;
+    </div>
 
-  if (prov.length) _doughnutChart('chart-providers', prov.map(x=>x.provider_name), prov.map(x=>x.user_count));
-  if (rdist.length) _barChart('chart-rdist', rdist.map(x=>x.rating_value), rdist.map(x=>x.count));
+    <div class="analytics-subhead" style="margin-top:8px">By Genre</div>
+    ${genres.length ? `
+      <div class="genre-scroll-row" id="genre-scroll-row">
+        ${genres.map((g, i) => `
+          <div class="genre-card" id="genre-card-${i}" onclick="_toggleGenreCard(${i})">
+            <div class="genre-card-name">${esc(g.genre)}</div>
+            <div class="genre-card-meta">${_fmt(g.total_ratings)} ratings &middot; ${g.avg_rating}★</div>
+          </div>`).join('')}
+      </div>
+      <div id="genre-movies-panel" class="genre-movies-panel"></div>
+    ` : '<p style="color:var(--text-muted);font-size:13px;margin-bottom:20px">No genre data available.</p>'}
+
+    <div class="analytics-subhead" style="margin-top:4px">By Release Year</div>
+    ${decadeLabels.length ? `
+      <div class="analytics-chart-wrap" style="margin-bottom:20px">
+        <canvas id="chart-decades"></canvas>
+      </div>
+    ` : '<p style="color:var(--text-muted);font-size:13px;margin-bottom:20px">No year data available.</p>'}
+  `;
+
+  // Store top-movies-per-genre on the panel element for use in toggle
+  const panel = document.getElementById('genre-movies-panel');
+  if (panel) panel._topPG = topPG;
+
+  if (prov.length)          _doughnutChart('chart-providers', prov.map(x=>x.provider_name), prov.map(x=>x.user_count));
+  if (rdist.length)         _barChart('chart-rdist', rdist.map(x=>x.rating_value), rdist.map(x=>x.count));
+  if (decadeLabels.length)  _barChart('chart-decades', decadeLabels, decadeVals);
+}
+
+function _toggleGenreCard(idx) {
+  const panel = document.getElementById('genre-movies-panel');
+  const topPG = panel && panel._topPG ? panel._topPG : [];
+
+  // If clicking the already-open card, close it
+  if (_openGenreIdx === idx) {
+    _openGenreIdx = null;
+    document.getElementById(`genre-card-${idx}`).classList.remove('open');
+    panel.classList.remove('open');
+    panel.innerHTML = '';
+    return;
+  }
+
+  // Close previous card if open
+  if (_openGenreIdx !== null) {
+    const prev = document.getElementById(`genre-card-${_openGenreIdx}`);
+    if (prev) prev.classList.remove('open');
+  }
+
+  _openGenreIdx = idx;
+  document.getElementById(`genre-card-${idx}`).classList.add('open');
+
+  const entry = topPG[idx];
+  if (!entry) { panel.classList.remove('open'); return; }
+
+  const movies = entry.movies || [];
+  panel.innerHTML = `
+    <div style="padding:10px 14px 4px;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.7px">
+      Top movies — ${esc(entry.genre)}
+    </div>
+    <table>
+      <thead><tr><th>#</th><th>Title</th><th>Year</th><th>Avg Rating</th><th>Ratings</th></tr></thead>
+      <tbody>
+        ${movies.map((m, i) => `<tr>
+          <td style="color:var(--text-muted)">${i+1}</td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.title)}</td>
+          <td style="color:var(--text-muted)">${m.year||'—'}</td>
+          <td style="color:#f5a623">${m.avg_rating}★</td>
+          <td>${_fmt(m.rating_count)}</td>
+        </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No data</td></tr>'}
+      </tbody>
+    </table>
+  `;
+  panel.classList.add('open');
+
+  // Scroll the card into view smoothly
+  document.getElementById(`genre-card-${idx}`).scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 }
 
 /* ── Moderation ── */
