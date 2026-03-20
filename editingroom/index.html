@@ -778,7 +778,49 @@
     .panel-stat {
       background: var(--bg-primary);
       padding: 12px 8px; text-align: center;
+      cursor: pointer; transition: background .15s;
     }
+    .panel-stat:hover { background: var(--bg-hover); }
+
+    /* ─── STAT SUB-PANEL ─────────────────────────────────────────────── */
+    .sub-panel { display: flex; flex-direction: column; height: 100%; }
+    .sub-panel-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .sub-panel-back {
+      background: none; border: 1px solid var(--border);
+      color: var(--text-muted); border-radius: 6px; padding: 5px 11px;
+      font-size: 13px; cursor: pointer; transition: color .15s, border-color .15s;
+    }
+    .sub-panel-back:hover { color: var(--text-primary); border-color: var(--text-muted); }
+    .sub-panel-title { font-family: 'DM Serif Display', serif; font-size: 15px; }
+    #sub-panel-content { flex: 1; overflow-y: auto; padding: 4px 0; }
+    .sub-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 10px 20px; border-bottom: 1px solid rgba(245,240,232,.05);
+    }
+    .sub-item:last-child { border-bottom: none; }
+    .sub-poster {
+      width: 32px; height: 48px; object-fit: cover;
+      border-radius: 3px; flex-shrink: 0; background: var(--bg-hover);
+    }
+    .sub-poster-blank {
+      width: 32px; height: 48px; background: var(--bg-hover);
+      border-radius: 3px; flex-shrink: 0;
+    }
+    .sub-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--bg-hover); display: flex; align-items: center;
+      justify-content: center; font-size: 11px; font-weight: 600;
+      color: var(--text-muted); flex-shrink: 0;
+    }
+    .sub-item-info { flex: 1; min-width: 0; }
+    .sub-item-title {
+      font-size: 13px; font-weight: 500; margin-bottom: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .sub-item-meta { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
     .panel-stat-n {
       font-family: 'DM Serif Display', serif;
       font-size: 20px; color: var(--text-primary); line-height: 1;
@@ -1691,8 +1733,8 @@ function formatDate(s) {
   try {
     return new Date(s).toLocaleString('en-US', {
       timeZone: getAdminTimezone(),
-      dateStyle: 'medium',
-      timeStyle: 'short',
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true,
     });
   } catch { return s; }
 }
@@ -1983,7 +2025,7 @@ function renderUsersTable(users, total) {
       <table>
         <thead><tr>
           <th class="sortable" onclick="setSortCol('username')">Username ${sortIcon('username')}</th>
-          <th class="sortable" onclick="setSortCol('first_name')">Name ${sortIcon('first_name')}</th>
+          <th class="sortable" onclick="setSortCol('last_name')">Name ${sortIcon('last_name')}</th>
           <th class="sortable" onclick="setSortCol('email')">Email ${sortIcon('email')}</th>
           <th class="sortable" onclick="setSortCol('role')">Role ${sortIcon('role')}</th>
           <th class="sortable" onclick="setSortCol('email_verified')">Verified ${sortIcon('email_verified')}</th>
@@ -2594,9 +2636,7 @@ function closeUserPanel() {
 
 function renderUserPanel(u) {
   const initials = (u.username || '?').slice(0,2).toUpperCase();
-  const joinDate = u.created_at ? new Date(u.created_at).toLocaleString('en-US', {
-    timeZone: getAdminTimezone(), dateStyle: 'medium', timeStyle: 'short',
-  }) : '—';
+  const joinDate = u.created_at ? formatDate(u.created_at) : '—';
   const ratings  = u.total_ratings    ?? '—';
   const reviews  = u.total_reviews    ?? '—';
   const friends  = u.follower_count   ?? '—';
@@ -2628,10 +2668,10 @@ function renderUserPanel(u) {
       </div>
 
       <div class="panel-stats">
-        <div class="panel-stat"><div class="panel-stat-n">${ratings}</div><div class="panel-stat-l">Ratings</div></div>
-        <div class="panel-stat"><div class="panel-stat-n">${reviews}</div><div class="panel-stat-l">Reviews</div></div>
-        <div class="panel-stat"><div class="panel-stat-n">${friends}</div><div class="panel-stat-l">Followers</div></div>
-        <div class="panel-stat"><div class="panel-stat-n">${groups}</div><div class="panel-stat-l">Groups</div></div>
+        <div class="panel-stat" onclick="openStatPanel('Ratings')"><div class="panel-stat-n">${ratings}</div><div class="panel-stat-l">Ratings</div></div>
+        <div class="panel-stat" onclick="openStatPanel('Reviews')"><div class="panel-stat-n">${reviews}</div><div class="panel-stat-l">Reviews</div></div>
+        <div class="panel-stat" onclick="openStatPanel('Followers')"><div class="panel-stat-n">${friends}</div><div class="panel-stat-l">Followers</div></div>
+        <div class="panel-stat" onclick="openStatPanel('Groups')"><div class="panel-stat-n">${groups}</div><div class="panel-stat-l">Groups</div></div>
       </div>
 
       <!-- IDENTITY -->
@@ -2930,17 +2970,24 @@ async function saveFieldEdit(field) {
       method: 'PUT',
       body: JSON.stringify({ field, value: newVal }),
     });
-    console.log('saveFieldEdit: saved', field, '=', newVal, res);
 
-    // Update cached user data
-    _panelUser[field] = newVal;
+    const oldUsername = _panelUser.username;
+
+    // Merge the full updated user object from the API response into _panelUser.
+    // This ensures all fields (not just the edited one) reflect actual DB state.
+    _panelUser = { ..._panelUser, ...res };
+
+    // Sync admin cache
     const cacheKey = Object.keys(_userAdminCache).find(k => _userAdminCache[k].id === _panelUser.id);
-    if (cacheKey) _userAdminCache[cacheKey][field] = newVal;
-    // If username changed, re-key the cache
+    if (cacheKey) _userAdminCache[cacheKey] = { ..._userAdminCache[cacheKey], ...res };
+
+    // If username changed, re-key the cache entry
     if (field === 'username' && cacheKey && cacheKey !== newVal) {
-      _userAdminCache[newVal] = { ..._userAdminCache[cacheKey], username: newVal };
+      _userAdminCache[newVal] = _userAdminCache[cacheKey];
       delete _userAdminCache[cacheKey];
-      document.getElementById('panel-title').textContent = newVal;
+      if (document.getElementById('panel-title')) {
+        document.getElementById('panel-title').textContent = newVal;
+      }
     }
 
     const label = field.replace(/_/g, ' ');
@@ -3234,6 +3281,117 @@ async function unbanEntry(banId) {
   } catch (e) {
     toast(`Failed: ${e.message}`, 'error');
   }
+}
+
+/* ─── STAT SUB-PANELS ────────────────────────────────────────────────── */
+
+async function openStatPanel(type) {
+  if (!_panelUser) return;
+  const u = _panelUser;
+  document.getElementById('panel-body').innerHTML = `
+    <div class="sub-panel">
+      <div class="sub-panel-header">
+        <button class="sub-panel-back" onclick="renderUserPanel(_panelUser)">← Back</button>
+        <div class="sub-panel-title">@${esc(u.username)}'s ${type}</div>
+      </div>
+      <div id="sub-panel-content"><div class="loading"><div class="spinner"></div></div></div>
+    </div>`;
+  const el = document.getElementById('sub-panel-content');
+  try {
+    switch (type) {
+      case 'Ratings':   await _loadRatingsPanel(u, el);   break;
+      case 'Reviews':   await _loadReviewsPanel(u, el);   break;
+      case 'Followers': await _loadFollowersPanel(u, el); break;
+      case 'Groups':    await _loadGroupsPanel(u, el);    break;
+    }
+  } catch (e) {
+    el.innerHTML = `<div class="empty">Failed to load: ${esc(e.message)}</div>`;
+  }
+}
+
+const TMDB_IMG = 'https://image.tmdb.org/t/p/w92';
+function _poster(path) {
+  return path
+    ? `<img class="sub-poster" src="${TMDB_IMG}${esc(path)}" alt="" loading="lazy">`
+    : `<div class="sub-poster-blank"></div>`;
+}
+
+async function _loadRatingsPanel(u, el) {
+  const data = await api(`/ratings/${u.username}`);
+  const items = Array.isArray(data) ? data : (data?.ratings || data?.results || []);
+  if (!items.length) { el.innerHTML = '<div class="empty">No ratings yet.</div>'; return; }
+  el.innerHTML = items.map(r => `
+    <div class="sub-item">
+      ${_poster(r.poster_path)}
+      <div class="sub-item-info">
+        <div class="sub-item-title">${esc(r.title || r.movie_title || '—')}</div>
+        <div class="sub-item-meta">⭐ ${r.rating ?? '—'}/10 &nbsp;·&nbsp; ${formatDate(r.rated_at || r.created_at)}</div>
+      </div>
+    </div>`).join('');
+}
+
+async function _loadReviewsPanel(u, el) {
+  const data = await api(`/reviews/user/${u.username}`);
+  const items = Array.isArray(data) ? data : (data?.reviews || data?.results || []);
+  if (!items.length) { el.innerHTML = '<div class="empty">No reviews yet.</div>'; return; }
+  el.innerHTML = items.map(r => {
+    const body = r.content || r.body || r.text || '';
+    return `
+    <div class="sub-item">
+      ${_poster(r.poster_path)}
+      <div class="sub-item-info">
+        <div class="sub-item-title">${esc(r.title || r.movie_title || '—')}</div>
+        ${body ? `<div class="sub-item-meta">${esc(body.slice(0, 120))}${body.length > 120 ? '…' : ''}</div>` : ''}
+        <div class="sub-item-meta" style="margin-top:2px">${formatDate(r.created_at)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function _loadFollowersPanel(u, el) {
+  // Fetch followers via admin endpoint or fall back to public profile count
+  let items = [];
+  try {
+    const data = await api(`/admin/users/${u.id}/followers`);
+    items = Array.isArray(data) ? data : (data?.followers || []);
+  } catch {
+    // No dedicated admin followers endpoint — show count only
+    el.innerHTML = `<div class="empty" style="padding:24px 20px">
+      Follower list requires a dedicated admin endpoint.<br>
+      <span style="font-size:20px;font-family:'DM Serif Display',serif;margin-top:12px;display:block">${u.follower_count ?? 0}</span>
+      <span style="font-size:11px;color:var(--text-muted)">FOLLOWERS</span></div>`;
+    return;
+  }
+  if (!items.length) { el.innerHTML = '<div class="empty">No followers yet.</div>'; return; }
+  el.innerHTML = items.map(f => {
+    const initials = (f.username || '?').slice(0, 2).toUpperCase();
+    return `
+    <div class="sub-item">
+      ${f.avatar_url ? `<img class="sub-avatar" src="${esc(f.avatar_url)}" alt="">` : `<div class="sub-avatar">${initials}</div>`}
+      <div class="sub-item-info">
+        <div class="sub-item-title">@${esc(f.username)}</div>
+        ${f.display_name ? `<div class="sub-item-meta">${esc(f.display_name)}</div>` : ''}
+        <div class="sub-item-meta">${formatDate(f.followed_at || f.created_at)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function _loadGroupsPanel(u, el) {
+  const data = await api(`/groups?user_id=${encodeURIComponent(u.id)}`);
+  const items = Array.isArray(data) ? data : (data?.groups || data?.results || []);
+  if (!items.length) { el.innerHTML = '<div class="empty">No groups yet.</div>'; return; }
+  el.innerHTML = items.map(g => `
+    <div class="sub-item">
+      <div class="sub-item-info">
+        <div class="sub-item-title">${esc(g.name || '—')}</div>
+        <div class="sub-item-meta">
+          ${g.member_count ?? '—'} members
+          ${g.user_role ? ` · ${esc(g.user_role)}` : ''}
+          · ${formatDate(g.joined_at || g.created_at)}
+        </div>
+      </div>
+    </div>`).join('');
 }
 
 /* ─── UTILITIES ──────────────────────────────────────────────────────── */
