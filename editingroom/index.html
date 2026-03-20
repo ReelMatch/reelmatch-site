@@ -1543,12 +1543,12 @@ function renderUsersTable(users, total) {
           <th>Verified</th><th>Joined</th><th>Actions</th>
         </tr></thead>
         <tbody>
-          ${users.map(u => `
+          ${users.map(u => { _userAdminCache[u.username] = u; return `
             <tr onclick="openUserPanel('${esc(u.username)}')" style="cursor:pointer">
               <td><strong>${esc(u.username)}</strong></td>
               <td style="color:var(--text-muted)">${esc(u.email||'—')}</td>
               <td>${roleBadge(u.role)}</td>
-              <td>${u.email_verified||u.is_verified ? '<span class="badge badge-verified">Yes</span>' : '<span class="badge badge-pending">No</span>'}</td>
+              <td>${u.email_verified === true ? '<span class="badge badge-verified">Yes</span>' : '<span class="badge badge-pending">No</span>'}</td>
               <td style="color:var(--text-muted);font-size:12px">${formatDate(u.created_at)}</td>
               <td>
                 <div style="display:flex;gap:6px;align-items:center">
@@ -1561,7 +1561,7 @@ function renderUsersTable(users, total) {
                 </div>
               </td>
             </tr>
-          `).join('')}
+          `; }).join('')}
         </tbody>
       </table>
     </div>`;
@@ -1939,20 +1939,42 @@ async function loadImportStatus() {
 
 /* ─── USER DETAIL PANEL ──────────────────────────────────────────────── */
 let _panelUser = null;
+const _userAdminCache = {}; // username → full admin row (has email, email_verified, role, id)
 
 async function openUserPanel(username) {
   document.getElementById('panel-title').textContent = username;
   document.getElementById('panel-body').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   document.getElementById('user-panel').classList.add('open');
   document.getElementById('panel-overlay').classList.add('open');
+
+  // Start with cached admin data (has id, email, email_verified, role, is_active)
+  const adminData = _userAdminCache[username] || {};
+  _panelUser = { ...adminData };
+
   try {
-    const u = await api(`/users/${username}`);
-    if (!u) return;
-    _panelUser = u;
-    // Also try to get stats from admin endpoint
-    renderUserPanel(u);
+    // Fetch public profile for stats (total_ratings, follower_count, etc.)
+    const profile = await api(`/users/${username}`);
+    if (profile) {
+      // Merge: profile adds stats; admin data wins for auth/admin fields
+      _panelUser = {
+        ...profile,
+        id:             adminData.id             ?? profile.id,
+        email:          adminData.email          ?? profile.email,
+        email_verified: adminData.email_verified ?? false,
+        role:           adminData.role           ?? profile.role,
+        is_active:      adminData.is_active,
+      };
+    }
+    console.log('openUserPanel: _panelUser =', _panelUser);
+    renderUserPanel(_panelUser);
   } catch (e) {
-    document.getElementById('panel-body').innerHTML = `<div class="empty">Error loading user: ${esc(e.message)}</div>`;
+    console.error('openUserPanel fetch error:', e);
+    // Still render with whatever admin data we have
+    if (_panelUser.id) {
+      renderUserPanel(_panelUser);
+    } else {
+      document.getElementById('panel-body').innerHTML = `<div class="empty">Error loading user: ${esc(e.message)}</div>`;
+    }
   }
 }
 
@@ -2055,14 +2077,21 @@ async function panelChangeRole() {
 }
 
 async function panelVerifyEmail() {
-  if (!_panelUser || _panelUser.email_verified) return;
+  if (!_panelUser) return;
+  if (_panelUser.email_verified === true) { toast('Email is already verified', 'info'); return; }
+  console.log('panelVerifyEmail: user_id =', _panelUser.id, 'email =', _panelUser.email);
   try {
-    await api(`/admin/users/${_panelUser.id}/verify-email`, { method: 'PUT' });
-    toast('Email verified', 'success');
+    const res = await api(`/admin/users/${_panelUser.id}/verify-email`, { method: 'PUT' });
+    console.log('panelVerifyEmail: response =', res);
     _panelUser.email_verified = true;
+    if (_userAdminCache[_panelUser.username]) _userAdminCache[_panelUser.username].email_verified = true;
+    toast('Email verified', 'success');
     renderUserPanel(_panelUser);
     loadUsers();
-  } catch (e) { toast(e.message, 'error'); }
+  } catch (e) {
+    console.error('panelVerifyEmail error:', e);
+    toast(`Verify failed: ${e.message}`, 'error');
+  }
 }
 
 async function panelResetPassword() {
@@ -2079,12 +2108,18 @@ async function panelResetPassword() {
 async function panelSuspend() {
   if (!_panelUser) return;
   showConfirm('Suspend Account', `Suspend @${_panelUser.username}? They will be unable to log in.`, async () => {
+    console.log('panelSuspend: user_id =', _panelUser.id);
     try {
-      await api(`/admin/users/${_panelUser.id}/suspend`, { method: 'PUT' });
+      const res = await api(`/admin/users/${_panelUser.id}/suspend`, { method: 'PUT' });
+      console.log('panelSuspend: response =', res);
+      if (_userAdminCache[_panelUser.username]) _userAdminCache[_panelUser.username].is_active = false;
       toast(`${_panelUser.username} suspended`, 'success');
       closeUserPanel();
       loadUsers();
-    } catch (e) { toast(e.message, 'error'); }
+    } catch (e) {
+      console.error('panelSuspend error:', e);
+      toast(`Suspend failed: ${e.message}`, 'error');
+    }
   });
 }
 
