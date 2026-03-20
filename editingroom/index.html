@@ -2563,6 +2563,10 @@ async function loadReports() {
   clearReportSearch();
   const subtitle = document.getElementById('reports-subtitle');
   if (subtitle) subtitle.textContent = 'Pending moderation queue';
+  // Calculate page_size once per session; resize listener unlocks it for recalculation
+  if (!_reportsPageSizeLocked) {
+    await _initReportsPageSize();
+  }
   await fetchReportsPage();
 }
 
