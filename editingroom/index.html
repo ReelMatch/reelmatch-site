@@ -3394,6 +3394,61 @@ async function unsuspendEntry(userId, username) {
   });
 }
 
+/* ─── PROBLEM USERS PANEL / MOD LOG MODAL ───────────────────────────── */
+
+function openProblemUserPanel(event, username, userId, rowData) {
+  // Don't open if clicking action buttons (they stopPropagation, but just in case)
+  if (!userId) {
+    // Deleted user — show simplified read-only info via mod log modal
+    openRowModLog(null, rowData.email || 'Deleted User');
+    return;
+  }
+  if (username) {
+    openUserPanel(username);
+  }
+}
+
+async function openRowModLog(userId, displayName) {
+  const overlay = document.getElementById('modlog-modal-overlay');
+  const title   = document.getElementById('modlog-modal-title');
+  const body    = document.getElementById('modlog-modal-body');
+  title.textContent = `${displayName}'s Mod Log`;
+  body.innerHTML = '<div class="loading" style="padding:32px;text-align:center"><div class="spinner"></div></div>';
+  overlay.style.display = 'flex';
+
+  if (!userId) {
+    body.innerHTML = '<div class="empty" style="padding:32px;text-align:center">No mod log available — user record not found.</div>';
+    return;
+  }
+
+  try {
+    const rows = await api(`/admin/users/${userId}/moderation-log`);
+    if (!rows || !rows.length) {
+      body.innerHTML = '<div class="empty" style="padding:32px;text-align:center">No moderation history.</div>';
+      return;
+    }
+    body.innerHTML = `
+      <table class="mod-log-table" style="width:100%">
+        <thead><tr><th>Date</th><th>Action</th><th>Reason</th><th>By</th></tr></thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr>
+              <td style="white-space:nowrap;color:var(--text-muted);font-size:11.5px">${formatDate(r.created_at)}</td>
+              <td><span class="action-badge ab-${r.action}">${r.action.replace(/_/g,' ')}</span></td>
+              <td style="color:var(--text-muted)">${esc(r.reason)}</td>
+              <td style="color:var(--text-muted)">${esc(r.performed_by_username || 'admin')}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch (e) {
+    body.innerHTML = `<div class="empty" style="padding:32px;text-align:center">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+function closeModlogModal() {
+  document.getElementById('modlog-modal-overlay').style.display = 'none';
+}
+
 /* ─── STAT SUB-PANELS ────────────────────────────────────────────────── */
 
 async function openStatPanel(type) {
