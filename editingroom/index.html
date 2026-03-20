@@ -3324,8 +3324,11 @@ function renderBannedTable(rows) {
               : '';
             const hasUserId = !!b.user_id;
             const rowClick = hasUserId
-              ? `style="${rowBg};cursor:pointer" onclick="openProblemUserPanel(event, '${esc(b.username || '')}', '${esc(b.user_id || '')}', ${JSON.stringify(b).replace(/'/g, '\\x27').replace(/"/g, '&quot;')})" `
+              ? `style="${rowBg};cursor:pointer" onclick="openProblemUserPanel(event, this)"`
               : `style="${rowBg}"`;
+            const dataAttrs = hasUserId
+              ? `data-username="${esc(b.username || '')}" data-userid="${esc(b.user_id || '')}"`
+              : '';
 
             const actionBtn = isBanned
               ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();unbanEntry('${esc(b.id)}', '${esc(b.email || '')}')">Unban</button>`
@@ -3335,7 +3338,7 @@ function renderBannedTable(rows) {
               : '';
 
             return `
-            <tr ${rowClick}>
+            <tr ${rowClick} ${dataAttrs}>
               <td>${badge}</td>
               <td><div style="font-weight:600">${esc(displayName)}</div>${subName}</td>
               <td style="color:var(--text-muted)">${esc(b.email || '—')}</td>
