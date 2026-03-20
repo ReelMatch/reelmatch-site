@@ -1642,7 +1642,7 @@ function renderUsersTable(users, total) {
       <table>
         <thead><tr>
           <th>Username</th><th>Email</th><th>Role</th>
-          <th>Verified</th><th>Joined</th><th>Actions</th>
+          <th>Verified</th><th>Joined</th>
         </tr></thead>
         <tbody>
           ${users.map(u => { _userAdminCache[u.username] = u; return `
@@ -1652,15 +1652,6 @@ function renderUsersTable(users, total) {
               <td>${roleBadge(u.role)}</td>
               <td>${u.email_verified === true ? '<span class="badge badge-verified">Yes</span>' : '<span class="badge badge-pending">No</span>'}</td>
               <td style="color:var(--text-muted);font-size:12px">${formatDate(u.created_at)}</td>
-              <td>
-                <div style="display:flex;gap:6px;align-items:center">
-                  <select class="role-select" onchange="changeRole('${u.id||u.username}','${esc(u.username)}',this.value)" onclick="event.stopPropagation()" title="Change role">
-                    <option value="user"${u.role==='user'?' selected':''}>user</option>
-                    <option value="moderator"${u.role==='moderator'?' selected':''}>moderator</option>
-                    <option value="admin"${u.role==='admin'?' selected':''}>admin</option>
-                  </select>
-                </div>
-              </td>
             </tr>
           `; }).join('')}
         </tbody>
@@ -2060,7 +2051,7 @@ function showReasonModal({ title, chipKey = 'generic', minLen = 10, destructive 
   btn.className = `btn ${destructive ? 'btn-danger' : 'btn-primary'}`;
   btn.disabled = true;
 
-  document.getElementById('reason-char-hint').textContent = `Minimum ${minLen} characters required.`;
+  document.getElementById('reason-char-hint').textContent = '';
   document.getElementById('reason-overlay').classList.add('open');
   setTimeout(() => ta.focus(), 60);
 }
@@ -2075,11 +2066,8 @@ function selectReasonChip(el, text) {
 function updateReasonBtn() {
   const len = document.getElementById('reason-textarea').value.trim().length;
   const btn = document.getElementById('reason-confirm-btn');
-  btn.disabled = len < _reasonMinLen;
-  document.getElementById('reason-char-hint').textContent =
-    len < _reasonMinLen
-      ? `${_reasonMinLen - len} more character${_reasonMinLen - len === 1 ? '' : 's'} needed.`
-      : '✓ Reason accepted.';
+  btn.disabled = len < 1;
+  document.getElementById('reason-char-hint').textContent = '';
 }
 
 function closeReasonModal() {
@@ -2088,10 +2076,22 @@ function closeReasonModal() {
 }
 
 function submitReason() {
+  console.log('submitReason: called');
   const reason = document.getElementById('reason-textarea').value.trim();
-  if (reason.length < _reasonMinLen) return;
+  console.log('submitReason: reason =', reason, '| length =', reason.length);
+  if (reason.length < 1) {
+    console.log('submitReason: reason too short, aborting');
+    return;
+  }
+  const cb = _reasonCallback;
+  console.log('submitReason: callback =', cb);
   closeReasonModal();
-  if (_reasonCallback) _reasonCallback(reason);
+  if (cb) {
+    console.log('submitReason: invoking callback');
+    cb(reason);
+  } else {
+    console.warn('submitReason: no callback set');
+  }
 }
 
 // Close on overlay click
