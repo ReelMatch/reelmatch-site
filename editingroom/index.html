@@ -2724,13 +2724,16 @@ let _reasonCallback = null;
 let _reasonMinLen   = 5;
 
 const REASON_CHIPS = {
-  suspend:     ['Spam', 'Harassment', 'Fake account', 'Terms violation', 'Abusive content'],
-  unsuspend:   ['Appeal accepted', 'Suspension served', 'Error corrected', 'Reviewed and cleared'],
-  role_change: ['Promoted to moderator', 'Demoted due to abuse', 'Admin access granted', 'Role correction'],
-  delete:      ['User requested deletion', 'Severe terms violation', 'Duplicate account', 'Fraudulent account'],
-  verify:      ['Identity confirmed', 'Manual review passed', 'Support request resolved'],
-  generic:         ['Policy violation', 'Admin action', 'Manual correction'],
-  content_removed: ['Spam', 'Harassment', 'Misinformation', 'Terms violation', 'Offensive content'],
+  suspend:        ['Spam', 'Harassment', 'Fake account', 'Terms violation', 'Abusive content'],
+  unsuspend:      ['Appeal accepted', 'Suspension served', 'Error corrected', 'Reviewed and cleared'],
+  role_change:    ['Promoted to moderator', 'Demoted due to abuse', 'Admin access granted', 'Role correction'],
+  delete:         ['User requested deletion', 'Severe terms violation', 'Duplicate account', 'Fraudulent account'],
+  verify:         ['Identity confirmed', 'Manual review passed', 'Support request resolved'],
+  generic:        ['Policy violation', 'Admin action', 'Manual correction'],
+  content_removed:['Spam', 'Harassment', 'Misinformation', 'Terms violation', 'Offensive content'],
+  report_dismiss: ['Insufficient evidence', 'Not a violation', 'Reporter error', 'Duplicate report'],
+  report_delete:  ['Harassment', 'Spam', 'Inappropriate content', 'Spoilers', 'Hate speech'],
+  report_escalate:['Severe violation', 'Repeat offender', 'Legal concern', 'Needs senior review'],
 };
 
 function showReasonModal({ title, chipKey = 'generic', minLen = 5, destructive = false, onConfirm }) {
