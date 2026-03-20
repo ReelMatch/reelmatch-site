@@ -3399,13 +3399,10 @@ async function unsuspendEntry(userId, username) {
 
 /* ─── PROBLEM USERS PANEL / MOD LOG MODAL ───────────────────────────── */
 
-function openProblemUserPanel(event, username, userId, rowData) {
-  // Don't open if clicking action buttons (they stopPropagation, but just in case)
-  if (!userId) {
-    // Deleted user — show simplified read-only info via mod log modal
-    openRowModLog(null, rowData.email || 'Deleted User');
-    return;
-  }
+function openProblemUserPanel(event, row) {
+  const username = row.dataset.username;
+  const userId   = row.dataset.userid;
+  if (!userId) return;
   if (username) {
     openUserPanel(username);
   }
