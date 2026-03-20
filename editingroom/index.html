@@ -2808,14 +2808,32 @@ async function loadReportModLog(userId) {
 }
 
 function _updateReportPanelAfterAction(reportId, newStatus, actionLabel) {
+  // Update panel UI
   const badge = document.getElementById('rp-status-badge');
   if (badge) badge.innerHTML = reportStatusBadge(newStatus);
   const actions = document.getElementById('rp-actions');
   if (actions) actions.innerHTML = `<div style="color:var(--text-muted);font-size:12px;text-align:center">${esc(actionLabel)}</div>`;
-  if (_reportsCache) {
-    const idx = _reportsCache.findIndex(r => r.id === reportId);
-    if (idx !== -1) _reportsCache[idx].status = newStatus;
-    renderReportsTable(_reportsCache);
+
+  // Fade and remove row from table
+  const row = document.getElementById(`report-row-${reportId}`);
+  if (row) {
+    row.style.transition = 'opacity .4s';
+    row.style.opacity = '0';
+    setTimeout(() => {
+      row.remove();
+      reportsTotal = Math.max(0, reportsTotal - 1);
+      // If page is now empty and we're not on page 1, go back one page
+      const remaining = document.querySelectorAll('#reports-table-wrap tbody tr').length;
+      if (remaining === 0 && reportsPage > 1) {
+        reportsPage--;
+        fetchReportsPage();
+      } else {
+        // Re-render pagination with updated total
+        const totalPages = Math.ceil(reportsTotal / reportsPageSize) || 1;
+        const paginationEl = document.querySelector('#reports-table-wrap .pagination');
+        if (paginationEl) paginationEl.outerHTML = _reportsPaginationHtml(reportsTotal, reportsPage, totalPages);
+      }
+    }, 400);
   }
 }
 
