@@ -1173,6 +1173,30 @@
     .health-critical { background: rgba(192,57,43,.15);  color: var(--accent); }
     .investor-charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
     @media(max-width:700px) { .investor-charts-row { grid-template-columns: 1fr; } }
+    /* Genre cards */
+    .genre-scroll-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 20px; scroll-snap-type: x mandatory; }
+    .genre-scroll-row::-webkit-scrollbar { height: 4px; }
+    .genre-scroll-row::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .genre-card {
+      flex: 0 0 auto; scroll-snap-align: start;
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 18px; cursor: pointer;
+      transition: border-color .15s, box-shadow .15s; min-width: 140px;
+    }
+    .genre-card:hover { border-color: var(--accent); }
+    .genre-card.open { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(192,57,43,.2); }
+    .genre-card-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .genre-card-meta { font-size: 11px; color: var(--text-muted); }
+    .genre-movies-panel {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: 10px; margin-bottom: 20px; overflow: hidden;
+      display: none;
+    }
+    .genre-movies-panel.open { display: block; }
+    .genre-movies-panel table { width: 100%; border-collapse: collapse; }
+    .genre-movies-panel th { padding: 10px 14px; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--text-muted); border-bottom: 1px solid var(--border); font-weight: 600; text-align: left; }
+    .genre-movies-panel td { padding: 10px 14px; font-size: 13px; border-bottom: 1px solid var(--border); }
+    .genre-movies-panel tr:last-child td { border-bottom: none; }
   </style>
 </head>
 <body>
