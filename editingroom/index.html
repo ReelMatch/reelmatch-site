@@ -160,6 +160,14 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    .sidebar-build {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
     .btn-logout {
       width: 100%;
       padding: 8px;
@@ -419,12 +427,40 @@
     .search-bar {
       display: flex; gap: 10px;
       margin-bottom: 20px;
-      position: relative;
-      align-items: flex-start;
+      align-items: center;
     }
     .search-bar input { flex: 1; max-width: 380px; }
-    .search-input-wrap { position: relative; flex: 1; max-width: 380px; display: flex; flex-direction: column; }
-    .search-input-wrap input { width: 100%; }
+    .search-input-wrap {
+      position: relative; flex: 1; max-width: 380px;
+      display: flex; flex-direction: column;
+    }
+    .search-input-wrap input {
+      width: 100%;
+      height: 42px;
+      padding-top: 0; padding-bottom: 0;
+      padding-right: 36px;
+      border-radius: 8px;
+      display: inline-flex; align-items: center;
+    }
+    .search-clear-btn {
+      display: none;
+      position: absolute; right: 10px; top: 50%;
+      transform: translateY(-50%);
+      background: none; border: none;
+      color: var(--text-muted); font-size: 16px;
+      cursor: pointer; line-height: 1; padding: 2px 4px;
+      transition: color .15s;
+      z-index: 2;
+    }
+    .search-clear-btn:hover { color: var(--text-primary); }
+    .search-clear-btn.visible { display: block; }
+    .search-bar .btn {
+      height: 42px;
+      padding-top: 0; padding-bottom: 0;
+      display: inline-flex; align-items: center;
+      border-radius: 8px;
+      vertical-align: middle;
+    }
     #is-filter-dropdown {
       display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
       background: var(--bg-surface); border: 1px solid var(--border);
@@ -1020,6 +1056,10 @@
     <div class="sidebar-footer">
       <div class="sidebar-user-email" id="sidebar-email">—</div>
       <button class="btn-logout" onclick="doLogout()">Sign out</button>
+      <div class="sidebar-build">
+        <div>v<span id="sidebar-build-ver"></span></div>
+        <div id="sidebar-build-date"></div>
+      </div>
     </div>
   </aside>
 
@@ -1059,11 +1099,12 @@
       </div>
       <div class="search-bar">
         <div class="search-input-wrap">
-          <input type="text" id="user-search" placeholder="Search by username or email… (try is:)" oninput="onUserSearchInput()" onkeydown="onUserSearchKeydown(event)" />
+          <input type="text" id="user-search" placeholder="Search by username or email… (try is:)" oninput="onUserSearchInput(); updateSearchClear()" onkeydown="onUserSearchKeydown(event)" />
+          <button class="search-clear-btn" id="search-clear-btn" onclick="clearUserSearch()" tabindex="-1">&times;</button>
           <div id="is-filter-dropdown"></div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="searchUsers()">Search</button>
-        <button class="btn btn-ghost btn-sm" onclick="loadUsers()">All Users</button>
+        <button class="btn btn-primary" onclick="searchUsers()">Search</button>
+        <button class="btn btn-ghost" onclick="loadUsers()">All Users</button>
       </div>
       <div id="users-table-wrap">
         <div class="loading"><div class="spinner"></div></div>
@@ -1245,7 +1286,9 @@
 <!-- ═══════════════════════════════════ JAVASCRIPT ═══════════════════ -->
 <script>
 /* ─── CONFIGURATION ─────────────────────────────────────────────────── */
-const API_BASE = 'https://web-production-d11a6.up.railway.app';
+const API_BASE     = 'https://web-production-d11a6.up.railway.app';
+const BUILD_VERSION = '0.1.2';
+const BUILD_DATE    = '2026-03-20 06:00 UTC';
 
 /* ─── THEMES ─────────────────────────────────────────────────────────── */
 const THEMES = [
@@ -1427,6 +1470,8 @@ function bootApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   document.getElementById('sidebar-email').textContent = state.user?.email || '';
+  document.getElementById('sidebar-build-ver').textContent  = BUILD_VERSION;
+  document.getElementById('sidebar-build-date').textContent = BUILD_DATE;
   document.getElementById('info-admin-email').textContent = state.user?.email || '';
   document.getElementById('info-api-base').textContent = API_BASE;
   buildThemeGrid('settings-theme-grid');
@@ -1535,6 +1580,15 @@ async function loadDashboard() {
           : `<div class="import-meta">No import jobs found</div>`}
       </div>
       <button class="btn btn-ghost btn-sm" onclick="navigate('settings')">Import Status ↗</button>
+    </div>
+
+    <!-- Build info -->
+    <div class="stats-grid" style="margin-top:0;grid-template-columns:1fr">
+      <div class="stat-card" style="padding:16px 18px">
+        <div class="stat-label" style="margin-bottom:4px">Build</div>
+        <div class="stat-number" style="font-size:1.4rem">v${BUILD_VERSION}</div>
+        <div class="stat-sublabel">${BUILD_DATE}</div>
+      </div>
     </div>
   `;
 
@@ -1646,6 +1700,7 @@ async function loadUsers() {
   state.usersPage = 1;
   closeIsFilterDropdown();
   document.getElementById('user-search').value = '';
+  updateSearchClear();
   const subtitle = document.querySelector('#sec-users .section-subtitle');
   if (subtitle) subtitle.textContent = 'All accounts';
   await fetchUsersPage();
@@ -1661,6 +1716,21 @@ const IS_FILTERS = [
   { key: 'is:verified',    filter: 'verified',    desc: 'Users with verified email' },
   { key: 'is:test',        filter: 'test',        desc: 'Test accounts (is_test_user)' },
 ];
+
+function updateSearchClear() {
+  const input = document.getElementById('user-search');
+  const btn   = document.getElementById('search-clear-btn');
+  if (!input || !btn) return;
+  btn.classList.toggle('visible', input.value.length > 0);
+}
+
+function clearUserSearch() {
+  const input = document.getElementById('user-search');
+  if (input) input.value = '';
+  updateSearchClear();
+  closeIsFilterDropdown();
+  loadUsers();
+}
 
 function onUserSearchInput() {
   const val = document.getElementById('user-search').value;
