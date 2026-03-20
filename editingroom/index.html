@@ -1171,10 +1171,19 @@
     <div class="section" id="sec-banned">
       <div class="section-header">
         <div>
-          <h1 class="section-title">Banned/Suspended Users</h1>
-          <div class="section-subtitle">Permanent bans — email, IP, and phone</div>
+          <h1 class="section-title">Problem Users</h1>
+          <div class="section-subtitle">Suspended and permanently banned accounts</div>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="loadBannedUsers()">↺ Refresh</button>
+      </div>
+      <div class="search-bar" style="margin-bottom:16px">
+        <div class="search-input-wrap">
+          <input type="text" id="problem-search" placeholder="Search by name, username, email…"
+            oninput="onProblemSearchInput()" onkeydown="if(event.key==='Enter')loadBannedUsers()" />
+          <button class="search-clear-btn" id="problem-search-clear" onclick="clearProblemSearch()">×</button>
+        </div>
+        <button class="btn btn-primary" onclick="loadBannedUsers()">Search</button>
+        <button class="btn btn-ghost" id="problem-all-btn" onclick="clearProblemSearch()">All</button>
       </div>
       <div id="banned-table-wrap">
         <div class="loading"><div class="spinner"></div></div>
