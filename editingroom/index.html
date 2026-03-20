@@ -2888,9 +2888,7 @@ function _updateReportPanelAfterAction(reportId, newStatus, actionLabel) {
         fetchReportsPage();
       } else {
         // Re-render pagination with updated total
-        const totalPages = Math.ceil(reportsTotal / reportsPageSize) || 1;
-        const paginationEl = document.querySelector('#reports-table-wrap .pagination');
-        if (paginationEl) paginationEl.outerHTML = _reportsPaginationHtml(reportsTotal, reportsPage, totalPages);
+        renderReportsPagination(reportsTotal);
       }
     }, 400);
   }
