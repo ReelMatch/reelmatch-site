@@ -3244,17 +3244,43 @@ let _bannedPage = 1;
 const _bannedPageSize = 30;
 let _bannedTotal = 0;
 
+function onProblemSearchInput() {
+  const val = document.getElementById('problem-search')?.value || '';
+  const btn = document.getElementById('problem-search-clear');
+  if (btn) btn.classList.toggle('visible', val.length > 0);
+}
+
+function clearProblemSearch() {
+  const input = document.getElementById('problem-search');
+  if (input) input.value = '';
+  onProblemSearchInput();
+  _bannedPage = 1;
+  loadBannedUsers();
+}
+
 async function loadBannedUsers() {
   const wrap = document.getElementById('banned-table-wrap');
   if (!wrap) return;
   wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Loading…</div>`;
-  const url = `/admin/banned-users?page=${_bannedPage}&page_size=${_bannedPageSize}`;
+  const q = (document.getElementById('problem-search')?.value || '').trim();
+  let url = `/admin/banned-users?page=${_bannedPage}&page_size=${_bannedPageSize}`;
+  if (q) url += `&q=${encodeURIComponent(q)}`;
   console.log('[loadBannedUsers] fetching', url, '| token:', state.token ? '✓' : '✗ MISSING');
   try {
     const raw = await api(url);
     console.log('[loadBannedUsers] response:', raw);
     if (!raw) return;
-    const rows = raw.banned || [];
+    let rows = raw.banned || [];
+    // Client-side filter if backend doesn't support q for this endpoint yet
+    if (q) {
+      const lq = q.toLowerCase();
+      rows = rows.filter(b =>
+        (b.username || '').toLowerCase().includes(lq) ||
+        (b.email    || '').toLowerCase().includes(lq) ||
+        (b.first_name || '').toLowerCase().includes(lq) ||
+        (b.last_name  || '').toLowerCase().includes(lq)
+      );
+    }
     _bannedTotal = raw.total || 0;
     renderBannedTable(rows);
   } catch (e) {
