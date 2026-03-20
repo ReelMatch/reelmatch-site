@@ -2906,8 +2906,6 @@ function deleteReportContent(reportId) {
       try {
         await api(`/admin/reports/${reportId}/delete-content`, { method: 'POST', body: JSON.stringify({ reason }) });
         _updateReportPanelAfterAction(reportId, 'resolved', 'Content deleted and report resolved');
-        const row = document.getElementById(`report-row-${reportId}`);
-        if (row) { row.style.transition = 'opacity .4s'; row.style.opacity = '0'; setTimeout(() => row.remove(), 400); }
         toast('Content deleted and report resolved', 'success');
       } catch (e) { toast(`Error: ${e.message}`, 'error'); }
     },
