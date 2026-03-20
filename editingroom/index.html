@@ -746,6 +746,42 @@
       background: rgba(229,62,62,.05);
     }
     .danger-zone .panel-section-title { color: #e57373; }
+
+    /* ─── USERS PAGINATION ───────────────────────────────────────────── */
+    .pagination-wrap {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 4px 4px;
+      flex-wrap: wrap; gap: 8px;
+    }
+    .pg-count { font-size: 12px; color: var(--text-muted); }
+    .pg-controls { display: flex; align-items: center; gap: 4px; }
+    .pg-btn {
+      padding: 5px 10px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--text-primary);
+      font-size: 12px;
+      cursor: pointer;
+      transition: border-color .15s, color .15s;
+    }
+    .pg-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .pg-btn:disabled { opacity: .35; cursor: default; }
+    .pg-label { font-size: 12px; color: var(--text-muted); padding: 0 6px; white-space: nowrap; }
+    .pg-num {
+      display: inline-block;
+      min-width: 24px; text-align: center;
+      color: var(--accent);
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 1px dashed var(--accent);
+      padding: 0 2px;
+    }
+    .pg-input {
+      width: 40px; text-align: center;
+      padding: 2px 4px; font-size: 12px;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
@@ -1031,6 +1067,10 @@ let state = {
   userQuery:    '',
   activeTheme:  localStorage.getItem('admin_theme') || 'reelmatch',
   editingTemplate: null,
+  usersTotal:   0,
+  usersPageSize: 20,
+  _filteredUsers: null,
+  _usersTotalFetched: false,
 };
 
 /* ─── THEME SYSTEM ───────────────────────────────────────────────────── */
@@ -1180,6 +1220,13 @@ function bootApp() {
   buildThemeGrid('settings-theme-grid');
   renderEmailTemplateList();
   startDashAutoRefresh();
+  window.addEventListener('resize', () => {
+    if (state.section === 'users') {
+      calcUsersPageSize();
+      if (state._filteredUsers) renderUsersPageFromCache();
+      else fetchUsersPage();
+    }
+  });
   navigate(state.section);
 }
 
@@ -1366,77 +1413,136 @@ function handleCardClick(action) {
   }
 }
 
-async function fetchUsersFiltered(filter) {
-  const wrap = document.getElementById('users-table-wrap');
-  const subtitle = document.querySelector('#sec-users .section-subtitle');
-  wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Loading users…</div>`;
-  const now = new Date();
-  let since;
-  if (filter === 'today') {
-    since = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-    if (subtitle) subtitle.textContent = 'Joined today';
-  } else if (filter === 'week') {
-    since = new Date(now - 7 * 864e5).toISOString();
-    if (subtitle) subtitle.textContent = 'Joined this week';
-  }
-  try {
-    // Fetch all and filter client-side (API doesn't support date filter)
-    const data = await api('/admin/users?page_size=200');
-    console.log('admin/users response:', data);
-    if (!data) return;
-    const filtered = since
-      ? data.filter(u => u.created_at && u.created_at >= since)
-      : data;
-    renderUsersTable(filtered);
-  } catch (e) {
-    console.error('fetchUsersFiltered error:', e);
-    wrap.innerHTML = `<div class="empty">Error: ${esc(e.message)}</div>`;
-    toast(e.message, 'error');
-  }
+function calcUsersPageSize() {
+  const searchBarEl = document.querySelector('#sec-users .search-bar');
+  const paginationEl = document.getElementById('users-pagination');
+  const headerEl = document.querySelector('#sec-users .section-header');
+  const searchH  = searchBarEl  ? searchBarEl.offsetHeight  + 16 : 60;
+  const headerH  = headerEl     ? headerEl.offsetHeight     + 28 : 80;
+  const paginH   = 56; // reserved for pagination row
+  const tableHeadH = 42; // thead row
+  const mainPad  = 64; // top+bottom padding of #main-content
+  const available = window.innerHeight - searchH - headerH - paginH - tableHeadH - mainPad;
+  const rows = Math.floor(available / 56);
+  state.usersPageSize = Math.min(50, Math.max(5, rows));
 }
 
 async function loadUsers() {
+  calcUsersPageSize();
   state.userQuery = '';
+  state.usersPage = 1;
   document.getElementById('user-search').value = '';
   const subtitle = document.querySelector('#sec-users .section-subtitle');
   if (subtitle) subtitle.textContent = 'All accounts';
-  const wrap = document.getElementById('users-table-wrap');
-  wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Loading users…</div>`;
-  try {
-    const data = await api('/admin/users?page_size=100');
-    if (!data) return;
-    renderUsersTable(data);
-  } catch (e) {
-    console.error('loadUsers error:', e);
-    wrap.innerHTML = `<div class="empty">Error: ${esc(e.message)}</div>`;
-    toast(e.message, 'error');
-  }
+  await fetchUsersPage();
 }
+
 async function searchUsers() {
   const q = document.getElementById('user-search').value.trim();
   if (!q) { loadUsers(); return; }
   state.userQuery = q;
   state.usersPage = 1;
   const subtitle = document.querySelector('#sec-users .section-subtitle');
-  if (subtitle) subtitle.textContent = `Results for "${esc(q)}"`;
+  if (subtitle) subtitle.textContent = `Results for "${q}"`;
+  await fetchUsersPage();
+}
+
+async function fetchUsersFiltered(filter) {
+  calcUsersPageSize();
+  const subtitle = document.querySelector('#sec-users .section-subtitle');
+  const now = new Date();
+  let since;
+  if (filter === 'today') {
+    since = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    if (subtitle) subtitle.textContent = 'Joined today';
+  } else {
+    since = new Date(now - 7 * 864e5).toISOString();
+    if (subtitle) subtitle.textContent = 'Joined this week';
+  }
+  // Fetch all, filter client-side, then paginate
   const wrap = document.getElementById('users-table-wrap');
-  wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Searching…</div>`;
+  wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Loading users…</div>`;
   try {
-    const data = await api(`/users/search?q=${encodeURIComponent(q)}&page_size=50`);
+    const data = await api('/admin/users?page_size=200');
     if (!data) return;
-    renderUsersTable(Array.isArray(data) ? data : (data.users || data.results || []));
+    const filtered = since ? data.filter(u => u.created_at && u.created_at >= since) : data;
+    state.usersTotal = filtered.length;
+    state.usersPage = 1;
+    // Store filtered set for pagination
+    state._filteredUsers = filtered;
+    renderUsersPageFromCache();
   } catch (e) {
-    console.error('searchUsers error:', e);
     wrap.innerHTML = `<div class="empty">Error: ${esc(e.message)}</div>`;
     toast(e.message, 'error');
   }
 }
 
-function renderUsersTable(users) {
+function renderUsersPageFromCache() {
+  const filtered = state._filteredUsers || [];
+  const ps = state.usersPageSize;
+  const page = state.usersPage;
+  const slice = filtered.slice((page - 1) * ps, page * ps);
+  renderUsersTable(slice, filtered.length);
+}
+
+async function fetchUsersPage() {
+  state._filteredUsers = null;
+  const wrap = document.getElementById('users-table-wrap');
+  wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Loading users…</div>`;
+  try {
+    let data, total;
+    if (state.userQuery) {
+      // Search: fetch all matching, paginate client-side
+      const raw = await api(`/users/search?q=${encodeURIComponent(state.userQuery)}&page_size=200`);
+      if (!raw) return;
+      const arr = Array.isArray(raw) ? raw : (raw.users || raw.results || []);
+      total = arr.length;
+      state.usersTotal = total;
+      const ps = state.usersPageSize;
+      data = arr.slice((state.usersPage - 1) * ps, state.usersPage * ps);
+      state._filteredUsers = arr;
+    } else {
+      // All users: server-side pagination
+      const raw = await api(`/admin/users?page=${state.usersPage}&page_size=${state.usersPageSize}`);
+      if (!raw) return;
+      data = raw;
+      // Estimate total from admin/stats or use count heuristic
+      if (data.length < state.usersPageSize) {
+        state.usersTotal = (state.usersPage - 1) * state.usersPageSize + data.length;
+      } else {
+        // Fetch total count if we don't know yet
+        if (!state._usersTotalFetched) {
+          try {
+            const stats = await api('/admin/stats');
+            // total_users counts role='user' only; add admins/mods
+            // Just use a generous estimate — we'll know exact on last page
+            state.usersTotal = stats ? (stats.total_users + 5) : 999;
+            state._usersTotalFetched = true;
+          } catch { state.usersTotal = 999; }
+        }
+      }
+    }
+    renderUsersTable(data, state.usersTotal);
+  } catch (e) {
+    console.error('fetchUsersPage error:', e);
+    wrap.innerHTML = `<div class="empty">Error: ${esc(e.message)}</div>`;
+    toast(e.message, 'error');
+  }
+}
+
+function renderUsersTable(users, total) {
   const wrap = document.getElementById('users-table-wrap');
   if (!users.length) {
-    wrap.innerHTML = `<div class="empty">No users found.</div>`; return;
+    wrap.innerHTML = `<div class="empty">No users found.</div>`;
+    renderUsersPagination(0, 0);
+    return;
   }
+  const totalUsers = total ?? users.length;
+  const ps = state.usersPageSize;
+  const page = state.usersPage;
+  const from = (page - 1) * ps + 1;
+  const to   = Math.min(page * ps, totalUsers);
+
   wrap.innerHTML = `
     <div class="table-wrap">
       <table>
@@ -1450,16 +1556,16 @@ function renderUsersTable(users) {
               <td><strong>${esc(u.username)}</strong></td>
               <td style="color:var(--text-muted)">${esc(u.email||'—')}</td>
               <td>${roleBadge(u.role)}</td>
-              <td>${u.is_verified ? '<span class="badge badge-verified">Yes</span>' : '<span class="badge badge-pending">No</span>'}</td>
+              <td>${u.email_verified||u.is_verified ? '<span class="badge badge-verified">Yes</span>' : '<span class="badge badge-pending">No</span>'}</td>
               <td style="color:var(--text-muted);font-size:12px">${formatDate(u.created_at)}</td>
               <td>
                 <div style="display:flex;gap:6px;align-items:center">
-                  <select class="role-select" onchange="changeRole('${u.id||u.username}','${esc(u.username)}',this.value)" title="Change role">
+                  <select class="role-select" onchange="changeRole('${u.id||u.username}','${esc(u.username)}',this.value)" onclick="event.stopPropagation()" title="Change role">
                     <option value="user"${u.role==='user'?' selected':''}>user</option>
                     <option value="moderator"${u.role==='moderator'?' selected':''}>moderator</option>
                     <option value="admin"${u.role==='admin'?' selected':''}>admin</option>
                   </select>
-                  <button class="btn btn-danger btn-sm" onclick="suspendUser('${u.id||u.username}','${esc(u.username)}')">Suspend</button>
+                  <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();suspendUser('${u.id||u.username}','${esc(u.username)}')">Suspend</button>
                 </div>
               </td>
             </tr>
@@ -1467,6 +1573,67 @@ function renderUsersTable(users) {
         </tbody>
       </table>
     </div>`;
+
+  renderUsersPagination(totalUsers, users.length);
+}
+
+function renderUsersPagination(total, pageCount) {
+  let el = document.getElementById('users-pagination');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'users-pagination';
+    document.getElementById('users-table-wrap').after(el);
+  }
+  const ps    = state.usersPageSize;
+  const page  = state.usersPage;
+  const pages = Math.ceil(total / ps) || 1;
+
+  if (total <= ps) { el.innerHTML = ''; return; }
+
+  const from = (page - 1) * ps + 1;
+  const to   = Math.min(page * ps, total);
+
+  el.innerHTML = `
+    <div class="pagination-wrap">
+      <span class="pg-count">Showing ${from}–${to} of ${total}</span>
+      <div class="pg-controls">
+        <button class="pg-btn" ${page===1?'disabled':''} onclick="usersGoPage(1)" title="First">|&lt;</button>
+        <button class="pg-btn" ${page===1?'disabled':''} onclick="usersGoPage(${page-1})" title="Previous">&lt;</button>
+        <span class="pg-label">Page
+          <span class="pg-num" id="pg-num-display" onclick="startPageEdit()" title="Click to jump">${page}</span>
+          <input id="pg-num-input" class="pg-input" type="number" min="1" max="${pages}" value="${page}"
+            style="display:none"
+            onblur="commitPageEdit(${pages})"
+            onkeydown="if(event.key==='Enter')commitPageEdit(${pages});if(event.key==='Escape'){this.style.display='none';document.getElementById('pg-num-display').style.display='inline'}" />
+          of ${pages}
+        </span>
+        <button class="pg-btn" ${page>=pages?'disabled':''} onclick="usersGoPage(${page+1})" title="Next">&gt;</button>
+        <button class="pg-btn" ${page>=pages?'disabled':''} onclick="usersGoPage(${pages})" title="Last">&gt;|</button>
+      </div>
+    </div>`;
+}
+
+function usersGoPage(n) {
+  state.usersPage = n;
+  if (state._filteredUsers) {
+    renderUsersPageFromCache();
+  } else {
+    fetchUsersPage();
+  }
+}
+
+function startPageEdit() {
+  document.getElementById('pg-num-display').style.display = 'none';
+  const inp = document.getElementById('pg-num-input');
+  inp.style.display = 'inline';
+  inp.focus(); inp.select();
+}
+
+function commitPageEdit(maxPages) {
+  const inp = document.getElementById('pg-num-input');
+  const n = Math.min(maxPages, Math.max(1, parseInt(inp.value, 10) || 1));
+  inp.style.display = 'none';
+  usersGoPage(n);
 }
 
 async function changeRole(userId, username, newRole) {
