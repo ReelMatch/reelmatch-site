@@ -2474,19 +2474,148 @@ async function saveTemplate() {
 
 /* ─── REPORTS ────────────────────────────────────────────────────────── */
 let _reportsCache = null;
+let reportsSortCol = 'created_at';
+let reportsSortDir = 'desc';
+let reportsPage = 1;
+let reportsPageSize = 20;
+let reportsFilter = null;
+let reportsQuery = '';
+let reportsTotal = 0;
+
+const REPORT_IS_FILTERS = [
+  { key: 'is:pending',   label: 'Pending',   filter: 'is:pending' },
+  { key: 'is:escalated', label: 'Escalated', filter: 'is:escalated' },
+  { key: 'is:resolved',  label: 'Resolved',  filter: 'is:resolved' },
+  { key: 'is:dismissed', label: 'Dismissed', filter: 'is:dismissed' },
+];
+
+function updateReportSearchClear() {
+  const input = document.getElementById('report-search');
+  const btn = document.getElementById('report-search-clear-btn');
+  if (!input || !btn) return;
+  btn.classList.toggle('visible', input.value.length > 0);
+}
+
+function clearReportSearch() {
+  const input = document.getElementById('report-search');
+  if (input) input.value = '';
+  updateReportSearchClear();
+  closeReportIsFilterDropdown();
+}
+
+function closeReportIsFilterDropdown() {
+  const dd = document.getElementById('report-is-filter-dropdown');
+  if (dd) dd.innerHTML = '';
+}
+
+function onReportSearchInput() {
+  const val = document.getElementById('report-search').value;
+  const dd = document.getElementById('report-is-filter-dropdown');
+  if (val.startsWith('is:')) {
+    const suffix = val.slice(3).toLowerCase();
+    const matches = REPORT_IS_FILTERS.filter(f => f.key.slice(3).startsWith(suffix));
+    if (matches.length) {
+      dd.innerHTML = `<div class="is-dropdown">${matches.map(f =>
+        `<div class="is-option" onclick="applyReportIsFilter('${f.key}','${f.filter}')">${f.label}</div>`
+      ).join('')}</div>`;
+    } else {
+      dd.innerHTML = '';
+    }
+  } else {
+    dd.innerHTML = '';
+  }
+}
+
+function onReportSearchKeydown(e) {
+  if (e.key === 'Enter') searchReports();
+  if (e.key === 'Escape') closeReportIsFilterDropdown();
+}
+
+function applyReportIsFilter(key, filter) {
+  document.getElementById('report-search').value = key;
+  closeReportIsFilterDropdown();
+  reportsQuery = '';
+  reportsFilter = filter;
+  reportsPage = 1;
+  fetchReportsPage();
+}
 
 async function loadReports() {
+  reportsQuery = '';
+  reportsFilter = null;
+  reportsPage = 1;
+  reportsSortCol = 'created_at';
+  reportsSortDir = 'desc';
+  clearReportSearch();
+  const subtitle = document.getElementById('reports-subtitle');
+  if (subtitle) subtitle.textContent = 'Pending moderation queue';
+  await fetchReportsPage();
+}
+
+async function searchReports() {
+  closeReportIsFilterDropdown();
+  const q = document.getElementById('report-search').value.trim();
+  if (!q) { loadReports(); return; }
+  if (q.startsWith('is:')) {
+    const filterVal = q.slice(3).toLowerCase();
+    const known = ['pending', 'escalated', 'resolved', 'dismissed'];
+    if (!known.includes(filterVal)) { toast('Unknown filter. Try is:pending, is:escalated, is:resolved, is:dismissed', 'error'); return; }
+    reportsFilter = `is:${filterVal}`;
+    reportsQuery = '';
+  } else {
+    reportsFilter = null;
+    reportsQuery = q;
+  }
+  reportsPage = 1;
+  fetchReportsPage();
+}
+
+function _detectReportsPageSize() {
+  const wrap = document.getElementById('reports-table-wrap');
+  const h = wrap ? wrap.clientHeight : (window.innerHeight - 300);
+  return Math.max(5, Math.min(30, Math.floor((h || 400) / 56)));
+}
+
+async function fetchReportsPage() {
+  reportsPageSize = _detectReportsPageSize();
   const wrap = document.getElementById('reports-table-wrap');
   wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Loading reports…</div>`;
+  const params = new URLSearchParams({
+    page: reportsPage,
+    page_size: reportsPageSize,
+    sort_by: reportsSortCol,
+    sort_dir: reportsSortDir,
+  });
+  if (reportsFilter) params.set('filter', reportsFilter);
+  if (reportsQuery) params.set('q', reportsQuery);
   try {
-    const data = await api('/admin/reports');
+    const data = await api(`/admin/reports?${params}`);
     if (!data) return;
-    _reportsCache = data;
-    renderReportsTable(data);
+    _reportsCache = data.reports;
+    reportsTotal = data.total;
+    renderReportsTable(data.reports, data.total);
   } catch (e) {
-    wrap.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+    wrap.innerHTML = `<div class="empty">Error: ${esc(e.message)}</div>`;
     toast(e.message, 'error');
   }
+}
+
+function setReportsSortCol(col) {
+  if (reportsSortCol === col) {
+    reportsSortDir = reportsSortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    reportsSortCol = col;
+    reportsSortDir = col === 'created_at' ? 'desc' : 'asc';
+  }
+  reportsPage = 1;
+  fetchReportsPage();
+}
+
+function reportsSortIcon(col) {
+  if (reportsSortCol !== col) return '<span style="opacity:.3;margin-left:4px">↕</span>';
+  return reportsSortDir === 'asc'
+    ? '<span style="margin-left:4px">↑</span>'
+    : '<span style="margin-left:4px">↓</span>';
 }
 
 function reportStatusBadge(status) {
@@ -2494,23 +2623,25 @@ function reportStatusBadge(status) {
   return `<span class="badge ${cls[status] || 'badge-pending'}">${esc(status)}</span>`;
 }
 
-function renderReportsTable(reports) {
+function renderReportsTable(reports, total) {
   const wrap = document.getElementById('reports-table-wrap');
-  if (!reports.length) {
+  const totalPages = Math.ceil((total || 0) / reportsPageSize) || 1;
+  if (!reports || !reports.length) {
     wrap.innerHTML = `<div class="empty" style="padding:40px;text-align:center;color:var(--text-muted)">✓ No reports</div>`;
     return;
   }
+  const thStyle = 'cursor:pointer;user-select:none;white-space:nowrap';
   wrap.innerHTML = `
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>Type</th>
-          <th>Offender</th>
-          <th>Reporter</th>
+          <th style="${thStyle}" onclick="setReportsSortCol('content_type')">Type${reportsSortIcon('content_type')}</th>
+          <th style="${thStyle}" onclick="setReportsSortCol('offender_username')">Offender${reportsSortIcon('offender_username')}</th>
+          <th style="${thStyle}" onclick="setReportsSortCol('reporter_username')">Reporter${reportsSortIcon('reporter_username')}</th>
           <th>Content Preview</th>
-          <th>Reason</th>
+          <th style="${thStyle}" onclick="setReportsSortCol('reason')">Reason${reportsSortIcon('reason')}</th>
           <th>Status</th>
-          <th>Date</th>
+          <th style="${thStyle}" onclick="setReportsSortCol('created_at')">Date${reportsSortIcon('created_at')}</th>
         </tr></thead>
         <tbody>
           ${reports.map(r => `
@@ -2528,7 +2659,31 @@ function renderReportsTable(reports) {
           `).join('')}
         </tbody>
       </table>
-    </div>`;
+    </div>
+    ${_reportsPaginationHtml(total, reportsPage, totalPages)}`;
+}
+
+function _reportsPaginationHtml(total, page, totalPages) {
+  if (totalPages <= 1) return '';
+  const btn = (p, label, disabled = false, active = false) =>
+    `<button class="btn btn-sm ${active ? 'btn-primary' : 'btn-ghost'}" ${disabled ? 'disabled' : ''} onclick="reportsGoToPage(${p})">${label}</button>`;
+  const pages = [];
+  for (let p = Math.max(1, page - 2); p <= Math.min(totalPages, page + 2); p++) {
+    pages.push(btn(p, p, false, p === page));
+  }
+  return `<div class="pagination" style="display:flex;align-items:center;gap:6px;padding:12px 0;justify-content:center;flex-wrap:wrap">
+    ${btn(1, '«', page === 1)}
+    ${btn(page - 1, '‹', page === 1)}
+    ${pages.join('')}
+    ${btn(page + 1, '›', page === totalPages)}
+    ${btn(totalPages, '»', page === totalPages)}
+    <span style="color:var(--text-muted);font-size:12px;margin-left:8px">${total} total</span>
+  </div>`;
+}
+
+function reportsGoToPage(p) {
+  reportsPage = p;
+  fetchReportsPage();
 }
 
 /* ─── REPORT DETAIL PANEL ────────────────────────────────────────────── */
