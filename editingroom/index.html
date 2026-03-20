@@ -4888,10 +4888,10 @@ function _updateGenreCarouselState() {
 
   const cardW = 180 + 12;
   const scrollLeft = row.scrollLeft;
-  const maxScroll = row.scrollWidth - outer.offsetWidth;
+  const maxScroll = row.scrollWidth - row.clientWidth;
 
   if (btnL) btnL.disabled = scrollLeft <= 0;
-  if (btnR) btnR.disabled = scrollLeft >= maxScroll - 1;
+  if (btnR) btnR.disabled = maxScroll <= 0 || scrollLeft >= maxScroll - 1;
 
   // Update active dot
   if (dotsEl) {
