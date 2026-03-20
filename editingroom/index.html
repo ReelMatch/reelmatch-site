@@ -1983,6 +1983,7 @@ function renderUsersTable(users, total) {
       <table>
         <thead><tr>
           <th class="sortable" onclick="setSortCol('username')">Username ${sortIcon('username')}</th>
+          <th class="sortable" onclick="setSortCol('first_name')">Name ${sortIcon('first_name')}</th>
           <th class="sortable" onclick="setSortCol('email')">Email ${sortIcon('email')}</th>
           <th class="sortable" onclick="setSortCol('role')">Role ${sortIcon('role')}</th>
           <th class="sortable" onclick="setSortCol('email_verified')">Verified ${sortIcon('email_verified')}</th>
@@ -1995,6 +1996,7 @@ function renderUsersTable(users, total) {
             return `
             <tr data-uid="${u.id}" onclick="openUserPanel('${esc(u.username)}')" style="${rowStyle}">
               <td><strong>${esc(u.username)}</strong>${suspended ? ' <span class="badge badge-suspended" style="font-size:10px;padding:1px 5px;vertical-align:middle">suspended</span>' : ''}</td>
+              <td style="color:var(--text-muted)">${u.first_name || u.last_name ? esc([u.first_name, u.last_name].filter(Boolean).join(' ')) : '—'}</td>
               <td style="color:var(--text-muted)">${esc(u.email||'—')}</td>
               <td>${roleBadge(u.role)}</td>
               <td>${u.email_verified === true ? '<span class="badge badge-verified">Yes</span>' : '<span class="badge badge-pending">No</span>'}</td>
