@@ -2519,7 +2519,8 @@ const REASON_CHIPS = {
   role_change: ['Promoted to moderator', 'Demoted due to abuse', 'Admin access granted', 'Role correction'],
   delete:      ['User requested deletion', 'Severe terms violation', 'Duplicate account', 'Fraudulent account'],
   verify:      ['Identity confirmed', 'Manual review passed', 'Support request resolved'],
-  generic:     ['Policy violation', 'Admin action', 'Manual correction'],
+  generic:         ['Policy violation', 'Admin action', 'Manual correction'],
+  content_removed: ['Spam', 'Harassment', 'Misinformation', 'Terms violation', 'Offensive content'],
 };
 
 function showReasonModal({ title, chipKey = 'generic', minLen = 5, destructive = false, onConfirm }) {
