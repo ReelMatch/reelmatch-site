@@ -3313,11 +3313,23 @@ async function openStatPanel(type) {
   }
 }
 
-const TMDB_IMG = 'https://image.tmdb.org/t/p/w92';
-function _poster(path) {
-  return path
-    ? `<img class="sub-poster" src="${TMDB_IMG}${esc(path)}" alt="" loading="lazy">`
-    : `<div class="sub-poster-blank"></div>`;
+function renderStars(rating) {
+  let html = '<span style="letter-spacing:1px">';
+  for (let i = 1; i <= 10; i++) {
+    if (rating >= i) {
+      html += `<span style="color:#f5a623">★</span>`;
+    } else if (rating >= i - 0.5) {
+      html += `<span style="position:relative;display:inline-block">` +
+              `<span style="color:var(--text-muted)">★</span>` +
+              `<span style="position:absolute;left:0;top:0;color:#f5a623;width:50%;overflow:hidden;display:inline-block">★</span>` +
+              `</span>`;
+    } else {
+      html += `<span style="color:var(--text-muted)">★</span>`;
+    }
+  }
+  html += `<span style="color:var(--text-muted);font-size:11px;margin-left:5px">${rating}</span>`;
+  html += '</span>';
+  return html;
 }
 
 async function _loadRatingsPanel(u, el) {
@@ -3325,12 +3337,10 @@ async function _loadRatingsPanel(u, el) {
   const items = Array.isArray(data) ? data : (data?.ratings || data?.results || []);
   if (!items.length) { el.innerHTML = '<div class="empty">No ratings yet.</div>'; return; }
   el.innerHTML = items.map(r => `
-    <div class="sub-item">
-      ${_poster(r.poster_path)}
-      <div class="sub-item-info">
-        <div class="sub-item-title">${esc(r.title || r.movie_title || '—')}</div>
-        <div class="sub-item-meta">⭐ ${r.rating ?? '—'}/10 &nbsp;·&nbsp; ${formatDate(r.rated_at || r.created_at)}</div>
-      </div>
+    <div class="sub-item" style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;gap:12px">
+      <div style="font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.title || r.movie_title || '—')}</div>
+      <div style="flex-shrink:0">${renderStars(r.rating ?? 0)}</div>
+      <div style="color:var(--text-muted);font-size:11px;flex-shrink:0;white-space:nowrap">${formatDate(r.rated_at || r.created_at)}</div>
     </div>`).join('');
 }
 
@@ -3338,18 +3348,23 @@ async function _loadReviewsPanel(u, el) {
   const data = await api(`/reviews/user/${u.username}`);
   const items = Array.isArray(data) ? data : (data?.reviews || data?.results || []);
   if (!items.length) { el.innerHTML = '<div class="empty">No reviews yet.</div>'; return; }
-  el.innerHTML = items.map(r => {
+  function reviewRow(r) {
     const body = r.content || r.body || r.text || '';
     return `
-    <div class="sub-item">
-      ${_poster(r.poster_path)}
-      <div class="sub-item-info">
+    <div class="sub-item" id="review-row-${esc(r.id)}" style="align-items:flex-start">
+      <div class="sub-item-info" style="flex:1;min-width:0">
         <div class="sub-item-title">${esc(r.title || r.movie_title || '—')}</div>
         ${body ? `<div class="sub-item-meta">${esc(body.slice(0, 120))}${body.length > 120 ? '…' : ''}</div>` : ''}
-        <div class="sub-item-meta" style="margin-top:2px">${formatDate(r.created_at)}</div>
+        <div class="sub-item-meta" style="margin-top:2px;display:flex;align-items:center;gap:8px">
+          ${r.rating != null ? renderStars(r.rating) : ''}
+          <span>${formatDate(r.created_at)}</span>
+        </div>
       </div>
+      <button class="btn btn-danger" style="font-size:11px;padding:3px 10px;flex-shrink:0;margin-left:8px"
+        onclick="deleteReview('${esc(r.id)}', '${esc(u.username)}')">Delete</button>
     </div>`;
-  }).join('');
+  }
+  el.innerHTML = items.map(reviewRow).join('');
 }
 
 async function _loadFollowersPanel(u, el) {
