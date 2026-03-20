@@ -1554,7 +1554,7 @@ async function api(path, opts = {}) {
   try {
     const res = await fetch(fullUrl, { ...opts, headers });
     console.log(`[api] ${opts.method || 'GET'} ${fullUrl} → ${res.status}`);
-    if (res.status === 401) { doLogout(); return null; }
+    if (res.status === 401 && state.token) { doLogout(); return null; }
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
       const detail = Array.isArray(err.detail)
