@@ -861,6 +861,8 @@
     }
     .pf-val-wrap:hover .pf-edit-btn { opacity: 1; }
     .pf-edit-btn:hover { color: var(--accent); }
+    .pf-val.pf-editable { cursor: pointer; }
+    .pf-val.pf-editable:hover { text-decoration: underline dotted rgba(245,240,232,.4); }
     .pf-input {
       flex: 1; width: 100%; padding: 5px 8px;
       font-size: 13px; font-family: inherit;
@@ -1184,6 +1186,14 @@
         </div>
 
         <div class="settings-card">
+          <h3>Display Timezone</h3>
+          <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+            <span class="settings-row-label">All dates and times in the admin panel are shown in:</span>
+            <div id="settings-tz-wrap"></div>
+          </div>
+        </div>
+
+        <div class="settings-card">
           <h3>Platform Info</h3>
           <div class="settings-row">
             <span class="settings-row-label">API Base URL</span>
@@ -1490,6 +1500,7 @@ function bootApp() {
   document.getElementById('info-admin-email').textContent = state.user?.email || '';
   document.getElementById('info-api-base').textContent = API_BASE;
   buildThemeGrid('settings-theme-grid');
+  initTimezoneSettings();
   renderEmailTemplateList();
   startDashAutoRefresh();
   window.addEventListener('resize', () => {
@@ -1512,11 +1523,12 @@ function navigate(section) {
     el.classList.toggle('active', el.id === `sec-${section}`);
   });
   switch (section) {
-    case 'dashboard': loadDashboard();    break;
-    case 'users':     loadUsers();        break;
-    case 'banned':    loadBannedUsers();  break;
-    case 'reports':   loadReports();      break;
-    case 'movies':    loadMovies();       break;
+    case 'dashboard': loadDashboard();       break;
+    case 'users':     loadUsers();           break;
+    case 'banned':    loadBannedUsers();     break;
+    case 'reports':   loadReports();         break;
+    case 'movies':    loadMovies();          break;
+    case 'settings':  initTimezoneSettings(); break;
   }
 }
 
@@ -1670,9 +1682,69 @@ function countUp(el) {
   requestAnimationFrame(step);
 }
 
+function getAdminTimezone() {
+  return localStorage.getItem('admin_timezone') || 'America/New_York';
+}
+
 function formatDate(s) {
   if (!s) return '';
-  try { return new Date(s).toLocaleString(); } catch { return s; }
+  try {
+    return new Date(s).toLocaleString('en-US', {
+      timeZone: getAdminTimezone(),
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+  } catch { return s; }
+}
+
+function buildTimezoneSelectHtml(selectId, currentVal) {
+  const common = [
+    'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+    'Europe/London', 'Europe/Paris', 'Asia/Tokyo', 'Australia/Sydney',
+  ];
+  let allZones;
+  try { allZones = Intl.supportedValuesOf('timeZone'); }
+  catch { allZones = [...common]; }
+
+  const groups = {};
+  for (const tz of allZones) {
+    const region = tz.includes('/') ? tz.split('/')[0] : 'Other';
+    if (!groups[region]) groups[region] = [];
+    groups[region].push(tz);
+  }
+  const opt = (tz) => `<option value="${tz}"${currentVal === tz ? ' selected' : ''}>${tz.replace(/_/g, ' ')}</option>`;
+  const regionOrder = ['America','Europe','Asia','Pacific','Australia','Africa','Atlantic','Indian','Arctic','Antarctica','Etc'];
+  const sortedRegions = Object.keys(groups).sort((a, b) => {
+    const ai = regionOrder.indexOf(a), bi = regionOrder.indexOf(b);
+    if (ai >= 0 && bi >= 0) return ai - bi;
+    if (ai >= 0) return -1; if (bi >= 0) return 1;
+    return a.localeCompare(b);
+  });
+  let html = `<select id="${selectId}" style="width:100%;max-width:320px;padding:8px 12px;font-size:13px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;cursor:pointer">`;
+  html += `<optgroup label="— Common —">${common.map(opt).join('')}</optgroup>`;
+  for (const region of sortedRegions) {
+    html += `<optgroup label="${region}">${groups[region].map(opt).join('')}</optgroup>`;
+  }
+  html += '</select>';
+  return html;
+}
+
+function initTimezoneSettings() {
+  const wrap = document.getElementById('settings-tz-wrap');
+  if (!wrap || wrap.dataset.init) return;
+  wrap.dataset.init = '1';
+  wrap.innerHTML = buildTimezoneSelectHtml('settings-tz-select', getAdminTimezone());
+  document.getElementById('settings-tz-select').addEventListener('change', e => {
+    localStorage.setItem('admin_timezone', e.target.value);
+    // Re-render visible content with new timezone
+    switch (state.section) {
+      case 'users':     if (state._currentPageData) renderUsersTable(state._currentPageData, state.usersTotal); break;
+      case 'banned':    loadBannedUsers(); break;
+      case 'reports':   loadReports();     break;
+      case 'dashboard': loadDashboard();   break;
+    }
+    if (_panelUser) renderUserPanel(_panelUser);
+  });
 }
 
 function startDashAutoRefresh() {
@@ -2520,7 +2592,9 @@ function closeUserPanel() {
 
 function renderUserPanel(u) {
   const initials = (u.username || '?').slice(0,2).toUpperCase();
-  const joinDate = u.created_at ? new Date(u.created_at).toLocaleDateString() : '—';
+  const joinDate = u.created_at ? new Date(u.created_at).toLocaleString('en-US', {
+    timeZone: getAdminTimezone(), dateStyle: 'medium', timeStyle: 'short',
+  }) : '—';
   const ratings  = u.total_ratings    ?? '—';
   const reviews  = u.total_reviews    ?? '—';
   const friends  = u.follower_count   ?? '—';
@@ -2572,7 +2646,7 @@ function renderUserPanel(u) {
             <div class="pf-row">
               <div class="pf-label">${label}</div>
               <div class="pf-val-wrap" id="pf-${field}">
-                <span class="pf-val${!val ? ' empty' : ''}">${esc(val || '—')}</span>
+                <span class="pf-val pf-editable${!val ? ' empty' : ''}" onclick="startFieldEdit('${field}')">${esc(val || '—')}</span>
                 <button class="pf-edit-btn" onclick="startFieldEdit('${field}')" title="Edit ${label}">✎</button>
               </div>
             </div>`).join('')}
@@ -2591,7 +2665,7 @@ function renderUserPanel(u) {
             <div class="pf-row">
               <div class="pf-label">${label}</div>
               <div class="pf-val-wrap" id="pf-${field}">
-                <span class="pf-val${!val ? ' empty' : ''}">${esc(val || '—')}</span>
+                <span class="pf-val pf-editable${!val ? ' empty' : ''}" onclick="startFieldEdit('${field}')">${esc(val || '—')}</span>
                 <button class="pf-edit-btn" onclick="startFieldEdit('${field}')" title="Edit ${label}">✎</button>
               </div>
             </div>`).join('')}
@@ -2626,6 +2700,13 @@ function renderUserPanel(u) {
               </div>
             </div>
           </div>
+          <div class="pf-row">
+            <div class="pf-label">Timezone</div>
+            <div class="pf-val-wrap" id="pf-timezone">
+              <span class="pf-val pf-editable${!u.timezone ? ' empty' : ''}" onclick="startFieldEdit('timezone')">${esc(u.timezone || '—')}</span>
+              <button class="pf-edit-btn" onclick="startFieldEdit('timezone')" title="Edit Timezone">✎</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -2640,7 +2721,7 @@ function renderUserPanel(u) {
             <div class="pf-row">
               <div class="pf-label">${label}</div>
               <div class="pf-val-wrap" id="pf-${field}">
-                <span class="pf-val${!val ? ' empty' : ''}">${esc(val || '—')}</span>
+                <span class="pf-val pf-editable${!val ? ' empty' : ''}" onclick="startFieldEdit('${field}')">${esc(val || '—')}</span>
                 <button class="pf-edit-btn" onclick="startFieldEdit('${field}')" title="Edit ${label}">✎</button>
               </div>
             </div>`).join('')}
@@ -2653,7 +2734,7 @@ function renderUserPanel(u) {
                   ? new Date(u.birthdate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
                   : null;
                 return `
-                  <span class="pf-val${!u.birthdate ? ' empty' : ''}">
+                  <span class="pf-val pf-editable${!u.birthdate ? ' empty' : ''}" onclick="startFieldEdit('birthdate')">
                     ${bdStr || '—'}
                     ${age !== null ? `<span style="color:var(--text-muted);font-size:12px;margin-left:6px">${age} years old</span>` : ''}
                   </span>
@@ -2758,7 +2839,7 @@ async function loadModLog(userId) {
         <tbody>
           ${rows.map(r => `
             <tr>
-              <td style="white-space:nowrap;color:var(--text-muted);font-size:11.5px">${new Date(r.created_at).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true})}</td>
+              <td style="white-space:nowrap;color:var(--text-muted);font-size:11.5px">${formatDate(r.created_at)}</td>
               <td><span class="action-badge ab-${r.action}">${r.action.replace(/_/g,' ')}</span></td>
               <td style="color:var(--text-muted)">${esc(r.reason)}</td>
               <td style="color:var(--text-muted)">${esc(r.performed_by_username||'admin')}</td>
@@ -2797,6 +2878,9 @@ function startFieldEdit(field) {
   </div>`;
   } else if (field === 'birthdate') {
     inputHtml = `<input class="pf-input" id="pf-input-${field}" type="date" value="${esc(currentVal)}" />`;
+  } else if (field === 'timezone') {
+    const tzHtml = buildTimezoneSelectHtml(`pf-input-${field}`, currentVal || 'America/New_York');
+    inputHtml = `<div style="flex:1">${tzHtml}</div>`;
   } else {
     inputHtml = `<input class="pf-input" id="pf-input-${field}" type="text" value="${esc(currentVal)}" />`;
   }
