@@ -432,20 +432,18 @@
     .search-bar input { flex: 1; max-width: 380px; }
     .search-input-wrap {
       position: relative; flex: 1; max-width: 380px;
-      display: flex; flex-direction: column;
     }
     .search-input-wrap input {
       width: 100%;
-      height: 42px;
-      padding-top: 0; padding-bottom: 0;
-      padding-right: 36px;
+      padding: 9px 36px 9px 12px;
+      font-size: 14px;
       border-radius: 8px;
-      display: inline-flex; align-items: center;
+      box-sizing: border-box;
     }
     .search-clear-btn {
       display: none;
-      position: absolute; right: 10px; top: 50%;
-      transform: translateY(-50%);
+      position: absolute; right: 10px; top: 0; bottom: 0;
+      margin: auto 0; height: 20px;
       background: none; border: none;
       color: var(--text-muted); font-size: 16px;
       cursor: pointer; line-height: 1; padding: 2px 4px;
@@ -455,11 +453,9 @@
     .search-clear-btn:hover { color: var(--text-primary); }
     .search-clear-btn.visible { display: block; }
     .search-bar .btn {
-      height: 42px;
-      padding-top: 0; padding-bottom: 0;
-      display: inline-flex; align-items: center;
+      padding: 9px 16px;
+      font-size: 14px;
       border-radius: 8px;
-      vertical-align: middle;
     }
     #is-filter-dropdown {
       display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
