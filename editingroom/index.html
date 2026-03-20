@@ -419,8 +419,27 @@
     .search-bar {
       display: flex; gap: 10px;
       margin-bottom: 20px;
+      position: relative;
+      align-items: flex-start;
     }
     .search-bar input { flex: 1; max-width: 380px; }
+    .search-input-wrap { position: relative; flex: 1; max-width: 380px; display: flex; flex-direction: column; }
+    .search-input-wrap input { width: 100%; }
+    #is-filter-dropdown {
+      display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: 8px; z-index: 500; overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    }
+    #is-filter-dropdown.open { display: block; }
+    .is-filter-opt {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 14px; cursor: pointer; transition: background .15s;
+      font-size: 13px;
+    }
+    .is-filter-opt:hover { background: var(--bg-hover); }
+    .is-filter-opt .is-filter-key { font-weight: 600; color: var(--accent); font-family: monospace; }
+    .is-filter-opt .is-filter-desc { color: var(--text-muted); font-size: 12px; }
 
     /* ─── CARD LIST ──────────────────────────────────────────────────── */
     .card-list { display: flex; flex-direction: column; gap: 12px; }
@@ -664,7 +683,7 @@
     /* ─── USER DETAIL PANEL ──────────────────────────────────────────── */
     #user-panel {
       position: fixed; top: 0; right: 0; bottom: 0;
-      width: 480px;
+      width: 640px;
       background: var(--bg-surface);
       border-left: 1px solid var(--border);
       z-index: 400;
@@ -674,6 +693,7 @@
       overflow: hidden;
     }
     #user-panel.open { transform: translateX(0); }
+    @media (max-width: 767px) { #user-panel { width: 90vw; } }
     #panel-overlay {
       display: none; position: fixed; inset: 0;
       background: rgba(0,0,0,.4); z-index: 399;
@@ -955,7 +975,10 @@
         </div>
       </div>
       <div class="search-bar">
-        <input type="text" id="user-search" placeholder="Search by username or email…" onkeydown="if(event.key==='Enter')searchUsers()" />
+        <div class="search-input-wrap">
+          <input type="text" id="user-search" placeholder="Search by username or email… (try is:)" oninput="onUserSearchInput()" onkeydown="onUserSearchKeydown(event)" />
+          <div id="is-filter-dropdown"></div>
+        </div>
         <button class="btn btn-primary btn-sm" onclick="searchUsers()">Search</button>
         <button class="btn btn-ghost btn-sm" onclick="loadUsers()">All Users</button>
       </div>
@@ -1167,6 +1190,7 @@ let state = {
   section:      'dashboard',
   usersPage:    1,
   userQuery:    '',
+  usersFilter:  null,
   activeTheme:  localStorage.getItem('admin_theme') || 'reelmatch',
   editingTemplate: null,
   usersTotal:   0,
@@ -1532,17 +1556,84 @@ function calcUsersPageSize() {
 async function loadUsers() {
   calcUsersPageSize();
   state.userQuery = '';
+  state.usersFilter = null;
   state.usersPage = 1;
+  closeIsFilterDropdown();
   document.getElementById('user-search').value = '';
   const subtitle = document.querySelector('#sec-users .section-subtitle');
   if (subtitle) subtitle.textContent = 'All accounts';
   await fetchUsersPage();
 }
 
+/* ── is: filter dropdown ─────────────────────────────────────────────── */
+const IS_FILTERS = [
+  { key: 'is:suspended',   filter: 'suspended',   desc: 'Users where account is suspended' },
+  { key: 'is:unsuspended', filter: 'unsuspended', desc: 'Users where account is active' },
+  { key: 'is:admin',       filter: 'admin',       desc: 'Users with role = admin' },
+  { key: 'is:moderator',   filter: 'moderator',   desc: 'Users with role = moderator' },
+  { key: 'is:unverified',  filter: 'unverified',  desc: 'Users with unverified email' },
+  { key: 'is:verified',    filter: 'verified',    desc: 'Users with verified email' },
+  { key: 'is:test',        filter: 'test',        desc: 'Test accounts (is_test_user)' },
+];
+
+function onUserSearchInput() {
+  const val = document.getElementById('user-search').value;
+  const dd = document.getElementById('is-filter-dropdown');
+  if (val.startsWith('is:')) {
+    const suffix = val.slice(3).toLowerCase();
+    const matches = IS_FILTERS.filter(f => f.key.slice(3).startsWith(suffix));
+    if (matches.length) {
+      dd.innerHTML = matches.map(f => `
+        <div class="is-filter-opt" onclick="applyIsFilter('${f.key}','${f.filter}')">
+          <span class="is-filter-key">${esc(f.key)}</span>
+          <span class="is-filter-desc">${esc(f.desc)}</span>
+        </div>`).join('');
+      dd.classList.add('open');
+      return;
+    }
+  }
+  dd.classList.remove('open');
+}
+
+function onUserSearchKeydown(e) {
+  if (e.key === 'Enter') { closeIsFilterDropdown(); searchUsers(); }
+  if (e.key === 'Escape') { closeIsFilterDropdown(); }
+}
+
+function closeIsFilterDropdown() {
+  document.getElementById('is-filter-dropdown').classList.remove('open');
+}
+
+function applyIsFilter(key, filter) {
+  document.getElementById('user-search').value = key;
+  closeIsFilterDropdown();
+  state.userQuery = '';
+  state.usersFilter = filter;
+  state.usersPage = 1;
+  const subtitle = document.querySelector('#sec-users .section-subtitle');
+  if (subtitle) subtitle.textContent = `Filter: ${key}`;
+  fetchUsersPage();
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-input-wrap')) closeIsFilterDropdown();
+});
+
 async function searchUsers() {
+  closeIsFilterDropdown();
   const q = document.getElementById('user-search').value.trim();
   if (!q) { loadUsers(); return; }
+  // Handle is: filter
+  if (q.startsWith('is:')) {
+    const suffix = q.slice(3).toLowerCase();
+    const match = IS_FILTERS.find(f => f.key === q);
+    if (match) { applyIsFilter(match.key, match.filter); return; }
+    // Partial match — pick first
+    const partial = IS_FILTERS.find(f => f.key.slice(3).startsWith(suffix));
+    if (partial) { applyIsFilter(partial.key, partial.filter); return; }
+  }
   state.userQuery = q;
+  state.usersFilter = null;
   state.usersPage = 1;
   const subtitle = document.querySelector('#sec-users .section-subtitle');
   if (subtitle) subtitle.textContent = `Results for "${q}"`;
@@ -1594,8 +1685,18 @@ async function fetchUsersPage() {
   wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Loading users…</div>`;
   try {
     let data, total;
-    if (state.userQuery) {
-      // Search: fetch all matching, paginate client-side
+    if (state.usersFilter) {
+      // is: filter — use admin endpoint for full user data
+      const raw = await api(`/admin/users?filter=${encodeURIComponent(state.usersFilter)}&page_size=200`);
+      if (!raw) return;
+      const arr = raw.users ?? raw;
+      total = raw.total ?? arr.length;
+      state.usersTotal = total;
+      const ps = state.usersPageSize;
+      data = arr.slice((state.usersPage - 1) * ps, state.usersPage * ps);
+      state._filteredUsers = arr;
+    } else if (state.userQuery) {
+      // Text search
       const raw = await api(`/users/search?q=${encodeURIComponent(state.userQuery)}&page_size=200`);
       if (!raw) return;
       const arr = Array.isArray(raw) ? raw : (raw.users || raw.results || []);
@@ -2021,7 +2122,7 @@ async function loadImportStatus() {
 
 /* ─── REASON MODAL ───────────────────────────────────────────────────── */
 let _reasonCallback = null;
-let _reasonMinLen   = 10;
+let _reasonMinLen   = 5;
 
 const REASON_CHIPS = {
   suspend:     ['Spam', 'Harassment', 'Fake account', 'Terms violation', 'Abusive content'],
@@ -2032,7 +2133,7 @@ const REASON_CHIPS = {
   generic:     ['Policy violation', 'Admin action', 'Manual correction'],
 };
 
-function showReasonModal({ title, chipKey = 'generic', minLen = 10, destructive = false, onConfirm }) {
+function showReasonModal({ title, chipKey = 'generic', minLen = 5, destructive = false, onConfirm }) {
   _reasonCallback = onConfirm;
   _reasonMinLen   = minLen;
 
@@ -2066,7 +2167,7 @@ function selectReasonChip(el, text) {
 function updateReasonBtn() {
   const len = document.getElementById('reason-textarea').value.trim().length;
   const btn = document.getElementById('reason-confirm-btn');
-  btn.disabled = len < 1;
+  btn.disabled = len < 5;
   document.getElementById('reason-char-hint').textContent = '';
 }
 
@@ -2079,7 +2180,7 @@ function submitReason() {
   console.log('submitReason: called');
   const reason = document.getElementById('reason-textarea').value.trim();
   console.log('submitReason: reason =', reason, '| length =', reason.length);
-  if (reason.length < 1) {
+  if (reason.length < 5) {
     console.log('submitReason: reason too short, aborting');
     return;
   }
@@ -2265,11 +2366,11 @@ async function loadModLog(userId) {
     }
     el.innerHTML = `
       <table class="mod-log-table">
-        <thead><tr><th>Date</th><th>Action</th><th>Reason</th><th>By</th></tr></thead>
+        <thead><tr><th>Timestamp</th><th>Action</th><th>Reason</th><th>By</th></tr></thead>
         <tbody>
           ${rows.map(r => `
             <tr>
-              <td style="white-space:nowrap;color:var(--text-muted)">${new Date(r.created_at).toLocaleDateString()}</td>
+              <td style="white-space:nowrap;color:var(--text-muted);font-size:11.5px">${new Date(r.created_at).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true})}</td>
               <td><span class="action-badge ab-${r.action}">${r.action.replace(/_/g,' ')}</span></td>
               <td style="color:var(--text-muted)">${esc(r.reason)}</td>
               <td style="color:var(--text-muted)">${esc(r.performed_by_username||'admin')}</td>
@@ -2355,7 +2456,7 @@ async function panelSuspend() {
   showReasonModal({
     title: `Suspend @${_panelUser.username}`,
     chipKey: 'suspend',
-    minLen: 10,
+    minLen: 5,
     destructive: true,
     onConfirm: async (reason) => {
       console.log('panelSuspend: user_id =', _panelUser.id);
@@ -2410,7 +2511,7 @@ async function panelDelete() {
   showReasonModal({
     title: `Delete @${_panelUser.username}`,
     chipKey: 'delete',
-    minLen: 20,
+    minLen: 5,
     destructive: true,
     onConfirm: async (reason) => {
       try {
