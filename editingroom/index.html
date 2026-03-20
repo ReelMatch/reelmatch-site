@@ -1258,9 +1258,18 @@
       <div class="section-header">
         <div>
           <h1 class="section-title">Content Reports</h1>
-          <div class="section-subtitle">Pending moderation queue</div>
+          <div class="section-subtitle" id="reports-subtitle">Pending moderation queue</div>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="loadReports()">↺ Refresh</button>
+      </div>
+      <div class="search-bar">
+        <div class="search-input-wrap">
+          <input type="text" id="report-search" placeholder="Search offender, reporter, reason… (try is:)" oninput="onReportSearchInput(); updateReportSearchClear()" onkeydown="onReportSearchKeydown(event)" />
+          <button class="search-clear-btn" id="report-search-clear-btn" onclick="clearReportSearch()" tabindex="-1">&times;</button>
+          <div id="report-is-filter-dropdown"></div>
+        </div>
+        <button class="btn btn-primary" onclick="searchReports()">Search</button>
+        <button class="btn btn-ghost" onclick="loadReports()">All Reports</button>
       </div>
       <div id="reports-table-wrap">
         <div class="loading"><div class="spinner"></div></div>
