@@ -160,20 +160,6 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .theme-dots {
-      display: flex; gap: 5px; flex-wrap: wrap;
-      margin-bottom: 12px;
-    }
-    .theme-dot {
-      width: 16px; height: 16px;
-      border-radius: 50%;
-      cursor: pointer;
-      border: 2px solid transparent;
-      transition: transform .15s;
-      flex-shrink: 0;
-    }
-    .theme-dot:hover { transform: scale(1.2); }
-    .theme-dot.active { border-color: var(--text-primary); }
     .btn-logout {
       width: 100%;
       padding: 8px;
@@ -579,7 +565,6 @@
     </nav>
     <div class="sidebar-footer">
       <div class="sidebar-user-email" id="sidebar-email">—</div>
-      <div class="theme-dots" id="sidebar-theme-dots"></div>
       <button class="btn-logout" onclick="doLogout()">Sign out</button>
     </div>
   </aside>
@@ -775,16 +760,21 @@ const API_BASE = 'https://web-production-d11a6.up.railway.app';
 
 /* ─── THEMES ─────────────────────────────────────────────────────────── */
 const THEMES = [
-  { id:'reelmatch',  name:'ReelMatch',   bg:'#0e0c0a', surface:'#1a1612', text:'#f5f0e8', muted:'#6b6560', accent:'#c0392b', border:'rgba(245,240,232,0.1)' },
-  { id:'midnight',   name:'Midnight',    bg:'#0a0d14', surface:'#111827', text:'#e8eaf6', muted:'#6b7280', accent:'#3b82f6', border:'rgba(232,234,246,0.1)' },
-  { id:'forest',     name:'Forest',      bg:'#0a110a', surface:'#111a11', text:'#e8f5e9', muted:'#6b7c6b', accent:'#2e7d32', border:'rgba(232,245,233,0.1)' },
-  { id:'burgundy',   name:'Burgundy',    bg:'#0f0a0a', surface:'#1a1010', text:'#fdf0f0', muted:'#7c6060', accent:'#8b1a1a', border:'rgba(253,240,240,0.1)' },
-  { id:'slate',      name:'Slate',       bg:'#0d0f12', surface:'#161b22', text:'#e6edf3', muted:'#8b949e', accent:'#58a6ff', border:'rgba(230,237,243,0.1)' },
-  { id:'amber',      name:'Amber',       bg:'#0f0e0a', surface:'#1a1810', text:'#fdf8e8', muted:'#7c7060', accent:'#d97706', border:'rgba(253,248,232,0.1)' },
-  { id:'plum',       name:'Plum',        bg:'#0e0a12', surface:'#1a1020', text:'#f3e8fd', muted:'#7c6080', accent:'#9333ea', border:'rgba(243,232,253,0.1)' },
-  { id:'rose',       name:'Rose',        bg:'#120a0d', surface:'#201016', text:'#fde8ef', muted:'#80606b', accent:'#e11d48', border:'rgba(253,232,239,0.1)' },
-  { id:'teal',       name:'Teal',        bg:'#0a1212', surface:'#101e1e', text:'#e8fafa', muted:'#607c7c', accent:'#0d9488', border:'rgba(232,250,250,0.1)' },
-  { id:'light',      name:'Light',       bg:'#f5f0e8', surface:'#ffffff', text:'#0e0c0a', muted:'#6b6560', accent:'#c0392b', border:'rgba(14,12,10,0.1)'    },
+  { id:'reelmatch',   name:'ReelMatch',   bg:'#0e0c0a', surface:'#1a1612', text:'#f5f0e8', muted:'#6b6560', accent:'#c0392b', border:'rgba(245,240,232,0.1)' },
+  { id:'midnight',    name:'Midnight',    bg:'#0a0d14', surface:'#111827', text:'#e8eaf6', muted:'#6b7280', accent:'#3b82f6', border:'rgba(232,234,246,0.1)' },
+  { id:'forest',      name:'Forest',      bg:'#0a110a', surface:'#111a11', text:'#e8f5e9', muted:'#6b7c6b', accent:'#2e7d32', border:'rgba(232,245,233,0.1)' },
+  { id:'burgundy',    name:'Burgundy',    bg:'#0f0a0a', surface:'#1a1010', text:'#fdf0f0', muted:'#7c6060', accent:'#8b1a1a', border:'rgba(253,240,240,0.1)' },
+  { id:'slate',       name:'Slate',       bg:'#0d0f12', surface:'#161b22', text:'#e6edf3', muted:'#8b949e', accent:'#58a6ff', border:'rgba(230,237,243,0.1)' },
+  { id:'amber',       name:'Amber',       bg:'#0f0e0a', surface:'#1a1810', text:'#fdf8e8', muted:'#7c7060', accent:'#d97706', border:'rgba(253,248,232,0.1)' },
+  { id:'plum',        name:'Plum',        bg:'#0e0a12', surface:'#1a1020', text:'#f3e8fd', muted:'#7c6080', accent:'#9333ea', border:'rgba(243,232,253,0.1)' },
+  { id:'rose',        name:'Rose',        bg:'#120a0d', surface:'#201016', text:'#fde8ef', muted:'#80606b', accent:'#e11d48', border:'rgba(253,232,239,0.1)' },
+  { id:'teal',        name:'Teal',        bg:'#0a1212', surface:'#101e1e', text:'#e8fafa', muted:'#607c7c', accent:'#0d9488', border:'rgba(232,250,250,0.1)' },
+  { id:'light',       name:'Light',       bg:'#f5f0e8', surface:'#ffffff', text:'#0e0c0a', muted:'#6b6560', accent:'#c0392b', border:'rgba(14,12,10,0.1)'    },
+  { id:'cream',       name:'Cream',       bg:'#f5f0e8', surface:'#ffffff', text:'#0e0c0a', muted:'#6b6560', accent:'#c0392b', border:'rgba(14,12,10,0.1)'    },
+  { id:'warm-white',  name:'Warm White',  bg:'#faf8f5', surface:'#ffffff', text:'#1a1612', muted:'#8a8278', accent:'#e87c35', border:'rgba(26,22,18,0.1)'    },
+  { id:'soft-blue',   name:'Soft Blue',   bg:'#f0f4f8', surface:'#ffffff', text:'#1a2332', muted:'#6b7a8d', accent:'#2563eb', border:'rgba(26,35,50,0.1)'    },
+  { id:'sage',        name:'Sage',        bg:'#f2f5f0', surface:'#ffffff', text:'#1a2018', muted:'#6b7c68', accent:'#2d6a4f', border:'rgba(26,32,24,0.1)'    },
+  { id:'lavender',    name:'Lavender',    bg:'#f4f0f8', surface:'#ffffff', text:'#1a1232', muted:'#7c6b8d', accent:'#7c3aed', border:'rgba(26,18,50,0.1)'    },
 ];
 
 /* ─── STATE ──────────────────────────────────────────────────────────── */
@@ -828,17 +818,6 @@ function hexToRgba(hex, a) {
   return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
 }
 
-function buildThemeDots(containerId) {
-  const c = document.getElementById(containerId);
-  if (!c) return;
-  c.innerHTML = THEMES.map(t => `
-    <span class="theme-dot${t.id===state.activeTheme?' active':''}"
-      data-tid="${t.id}"
-      title="${t.name}"
-      style="background:${t.accent}"
-      onclick="applyTheme('${t.id}')"></span>
-  `).join('');
-}
 function buildThemeGrid(containerId) {
   const c = document.getElementById(containerId);
   if (!c) return;
@@ -949,7 +928,6 @@ function bootApp() {
   document.getElementById('sidebar-email').textContent = state.user?.email || '';
   document.getElementById('info-admin-email').textContent = state.user?.email || '';
   document.getElementById('info-api-base').textContent = API_BASE;
-  buildThemeDots('sidebar-theme-dots');
   buildThemeGrid('settings-theme-grid');
   renderEmailTemplateList();
   navigate(state.section);
