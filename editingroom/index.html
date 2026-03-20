@@ -1183,7 +1183,9 @@
     }
     .genre-carousel-btn:disabled { opacity: .3; cursor: default; }
     .genre-scroll-outer { flex: 1; overflow: hidden; }
-    .genre-scroll-row { display: flex; gap: 12px; scroll-snap-type: x mandatory; scroll-behavior: smooth; }
+    .genre-scroll-row { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; }
+    .genre-scroll-row::-webkit-scrollbar { display: none; }
+    .genre-scroll-row { -ms-overflow-style: none; scrollbar-width: none; }
     .genre-card {
       flex: 0 0 180px; width: 180px; height: 120px; scroll-snap-align: start;
       background: var(--bg-surface); border: 1px solid var(--border);
