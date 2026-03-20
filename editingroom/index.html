@@ -1364,6 +1364,42 @@
       </div>
     </div>
 
+    <!-- ── ANALYTICS ─────────────────────────────────────────────── -->
+    <div class="section" id="sec-analytics">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Analytics</h1>
+          <div class="section-subtitle" id="analytics-subtitle">Platform insights</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="exportAnalyticsPDF()">⬇ Export PDF</button>
+      </div>
+      <div class="analytics-range-bar">
+        <div class="analytics-range-pills">
+          <button class="range-pill" id="range-7d"     onclick="setAnalyticsRange('7d')">7D</button>
+          <button class="range-pill active" id="range-30d" onclick="setAnalyticsRange('30d')">30D</button>
+          <button class="range-pill" id="range-90d"    onclick="setAnalyticsRange('90d')">90D</button>
+          <button class="range-pill" id="range-1y"     onclick="setAnalyticsRange('1y')">1Y</button>
+          <button class="range-pill" id="range-custom" onclick="setAnalyticsRange('custom')">Custom</button>
+        </div>
+        <div class="analytics-custom-range" id="analytics-custom-range" style="display:none">
+          <input type="date" id="analytics-from" onchange="applyCustomRange()" />
+          <span style="color:var(--text-muted);font-size:12px">to</span>
+          <input type="date" id="analytics-to" onchange="applyCustomRange()" />
+        </div>
+      </div>
+      <div class="analytics-tabs">
+        <button class="analytics-tab active" id="atab-growth"      onclick="setAnalyticsTab('growth')">Growth</button>
+        <button class="analytics-tab"        id="atab-engagement"  onclick="setAnalyticsTab('engagement')">Engagement</button>
+        <button class="analytics-tab"        id="atab-content"     onclick="setAnalyticsTab('content')">Content</button>
+        <button class="analytics-tab"        id="atab-moderation"  onclick="setAnalyticsTab('moderation')">Moderation</button>
+        <button class="analytics-tab"        id="atab-platform"    onclick="setAnalyticsTab('platform')">Platform</button>
+        <button class="analytics-tab"        id="atab-investor"    onclick="setAnalyticsTab('investor')">Investor Summary</button>
+      </div>
+      <div id="analytics-content">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
     <!-- ── SETTINGS ───────────────────────────────────────────────── -->
     <div class="section" id="sec-settings">
       <div class="section-header">
