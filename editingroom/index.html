@@ -3228,13 +3228,17 @@ async function loadBannedUsers() {
   const wrap = document.getElementById('banned-table-wrap');
   if (!wrap) return;
   wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Loading…</div>`;
+  const url = `/admin/banned-users?page=${_bannedPage}&page_size=${_bannedPageSize}`;
+  console.log('[loadBannedUsers] fetching', url, '| token:', state.token ? '✓' : '✗ MISSING');
   try {
-    const raw = await api(`/admin/banned-users?page=${_bannedPage}&page_size=${_bannedPageSize}`);
+    const raw = await api(url);
+    console.log('[loadBannedUsers] response:', raw);
     if (!raw) return;
     const rows = raw.banned || [];
     _bannedTotal = raw.total || 0;
     renderBannedTable(rows);
   } catch (e) {
+    console.error('[loadBannedUsers] error:', e);
     wrap.innerHTML = `<div class="empty">Error: ${esc(e.message)}</div>`;
   }
 }
@@ -3242,7 +3246,7 @@ async function loadBannedUsers() {
 function renderBannedTable(rows) {
   const wrap = document.getElementById('banned-table-wrap');
   if (!rows.length) {
-    wrap.innerHTML = `<div class="empty">No banned users.</div>`;
+    wrap.innerHTML = `<div class="empty">No banned or suspended users.</div>`;
     return;
   }
   const totalPages = Math.ceil(_bannedTotal / _bannedPageSize);
@@ -3266,8 +3270,8 @@ function renderBannedTable(rows) {
               <td>${esc(b.phone || '—')}</td>
               <td style="color:var(--text-muted)">${esc(b.reason || '—')}</td>
               <td style="color:var(--text-muted)">${esc(b.banned_by_username || '—')}</td>
-              <td style="color:var(--text-muted);font-size:12px">${formatDate(b.created_at)}</td>
-              <td><button class="btn btn-ghost btn-sm" onclick="unbanEntry('${esc(b.id)}')">Lift Ban</button></td>
+              <td style="color:var(--text-muted);font-size:12px;white-space:nowrap">${formatDate(b.created_at)}</td>
+              <td><button class="btn btn-ghost btn-sm" onclick="unbanEntry('${esc(b.id)}', '${esc(b.email || '')}')">Unban</button></td>
             </tr>`).join('')}
         </tbody>
       </table>
@@ -3280,8 +3284,9 @@ function renderBannedTable(rows) {
     </div>` : ''}`;
 }
 
-async function unbanEntry(banId) {
-  if (!confirm('Lift this ban and reactivate the user account?')) return;
+async function unbanEntry(banId, email) {
+  const label = email ? `ban for ${email}` : 'this ban';
+  if (!confirm(`Lift ${label} and reactivate the user account?`)) return;
   try {
     await api(`/admin/banned-users/${banId}`, {
       method: 'DELETE',
