@@ -782,6 +782,93 @@
       padding: 2px 4px; font-size: 12px;
       border-radius: 4px;
     }
+
+    /* ─── REASON MODAL ───────────────────────────────────────────────── */
+    #reason-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.65); z-index: 700;
+      align-items: center; justify-content: center;
+    }
+    #reason-overlay.open { display: flex; }
+    .reason-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 32px;
+      width: 480px; max-width: 94vw;
+    }
+    .reason-box h3 { font-size: 18px; margin-bottom: 6px; }
+    .reason-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 18px; }
+    .reason-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+    .reason-chip {
+      padding: 5px 12px;
+      background: var(--bg-hover);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .reason-chip:hover, .reason-chip.active {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--text-primary);
+    }
+    .reason-box textarea {
+      width: 100%; min-height: 80px; resize: vertical;
+      margin-bottom: 6px;
+      font-size: 13px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-family: inherit;
+    }
+    .reason-box textarea:focus { border-color: var(--accent); outline: none; }
+    .reason-char-hint { font-size: 11px; color: var(--text-muted); margin-bottom: 18px; }
+    .reason-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+    /* ─── MOD LOG TAB ────────────────────────────────────────────────── */
+    .panel-tabs {
+      display: flex; border-bottom: 1px solid var(--border);
+      margin-bottom: 20px; gap: 0;
+    }
+    .panel-tab {
+      padding: 10px 18px;
+      font-size: 13px; font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color .15s, border-color .15s;
+    }
+    .panel-tab:hover { color: var(--text-primary); }
+    .panel-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .panel-tab-content { display: none; }
+    .panel-tab-content.active { display: block; }
+
+    .mod-log-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .mod-log-table th {
+      text-align: left; padding: 8px 10px;
+      color: var(--text-muted); font-weight: 600;
+      text-transform: uppercase; font-size: 10px; letter-spacing: .7px;
+      border-bottom: 1px solid var(--border);
+    }
+    .mod-log-table td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .mod-log-table tr:last-child td { border-bottom: none; }
+    .action-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 12px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+    }
+    .ab-suspended    { background: rgba(229,62,62,.15);   color: #e57373; }
+    .ab-unsuspended  { background: rgba(56,161,105,.15);  color: #68d391; }
+    .ab-role_changed { background: rgba(59,130,246,.15);  color: #60a5fa; }
+    .ab-email_verified { background: rgba(13,148,136,.15);color: #2dd4bf; }
+    .ab-account_deleted { background: rgba(229,62,62,.25);color: #fc8181; }
+    .ab-warning_issued  { background: rgba(245,158,11,.15);color: #fcd34d; }
+    .ab-note_added   { background: rgba(107,114,128,.15); color: #9ca3af; }
   </style>
 </head>
 <body>
@@ -1015,6 +1102,21 @@
     <div class="confirm-actions">
       <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
       <button class="btn btn-danger" id="confirm-ok-btn" onclick="confirmOk()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ REASON MODAL ══════════════════════════════════════ -->
+<div id="reason-overlay">
+  <div class="reason-box">
+    <h3 id="reason-title">Confirm Action</h3>
+    <p class="reason-desc">This action will be permanently logged.</p>
+    <div class="reason-chips" id="reason-chips"></div>
+    <textarea id="reason-textarea" placeholder="Enter reason…"></textarea>
+    <div class="reason-char-hint" id="reason-char-hint"></div>
+    <div class="reason-actions">
+      <button class="btn btn-ghost" onclick="closeReasonModal()">Cancel</button>
+      <button class="btn btn-danger" id="reason-confirm-btn" onclick="submitReason()" disabled>Confirm</button>
     </div>
   </div>
 </div>
@@ -1557,7 +1659,6 @@ function renderUsersTable(users, total) {
                     <option value="moderator"${u.role==='moderator'?' selected':''}>moderator</option>
                     <option value="admin"${u.role==='admin'?' selected':''}>admin</option>
                   </select>
-                  <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();suspendUser('${u.id||u.username}','${esc(u.username)}')">Suspend</button>
                 </div>
               </td>
             </tr>
@@ -1639,17 +1740,7 @@ async function changeRole(userId, username, newRole) {
     toast(`Role change not yet supported by API: ${e.message}`, 'error');
   }
 }
-async function suspendUser(userId, username) {
-  showConfirm('Suspend User', `Suspend @${username}? They will be unable to log in.`, async () => {
-    try {
-      await api(`/users/${username}/suspend`, { method: 'POST' });
-      toast(`${username} suspended`, 'success');
-      loadUsers();
-    } catch (e) {
-      toast(`Suspend not yet supported by API: ${e.message}`, 'error');
-    }
-  });
-}
+
 
 function roleBadge(role) {
   if (role === 'admin')     return '<span class="badge badge-admin">admin</span>';
@@ -1937,6 +2028,77 @@ async function loadImportStatus() {
   }
 }
 
+/* ─── REASON MODAL ───────────────────────────────────────────────────── */
+let _reasonCallback = null;
+let _reasonMinLen   = 10;
+
+const REASON_CHIPS = {
+  suspend:     ['Spam', 'Harassment', 'Fake account', 'Terms violation', 'Abusive content'],
+  unsuspend:   ['Appeal accepted', 'Suspension served', 'Error corrected', 'Reviewed and cleared'],
+  role_change: ['Promoted to moderator', 'Demoted due to abuse', 'Admin access granted', 'Role correction'],
+  delete:      ['User requested deletion', 'Severe terms violation', 'Duplicate account', 'Fraudulent account'],
+  verify:      ['Identity confirmed', 'Manual review passed', 'Support request resolved'],
+  generic:     ['Policy violation', 'Admin action', 'Manual correction'],
+};
+
+function showReasonModal({ title, chipKey = 'generic', minLen = 10, destructive = false, onConfirm }) {
+  _reasonCallback = onConfirm;
+  _reasonMinLen   = minLen;
+
+  document.getElementById('reason-title').textContent = title;
+
+  const chips = REASON_CHIPS[chipKey] || REASON_CHIPS.generic;
+  document.getElementById('reason-chips').innerHTML = chips.map(c =>
+    `<span class="reason-chip" onclick="selectReasonChip(this,'${esc(c)}')">${esc(c)}</span>`
+  ).join('');
+
+  const ta = document.getElementById('reason-textarea');
+  ta.value = '';
+  ta.oninput = updateReasonBtn;
+
+  const btn = document.getElementById('reason-confirm-btn');
+  btn.className = `btn ${destructive ? 'btn-danger' : 'btn-primary'}`;
+  btn.disabled = true;
+
+  document.getElementById('reason-char-hint').textContent = `Minimum ${minLen} characters required.`;
+  document.getElementById('reason-overlay').classList.add('open');
+  setTimeout(() => ta.focus(), 60);
+}
+
+function selectReasonChip(el, text) {
+  document.querySelectorAll('.reason-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('reason-textarea').value = text;
+  updateReasonBtn();
+}
+
+function updateReasonBtn() {
+  const len = document.getElementById('reason-textarea').value.trim().length;
+  const btn = document.getElementById('reason-confirm-btn');
+  btn.disabled = len < _reasonMinLen;
+  document.getElementById('reason-char-hint').textContent =
+    len < _reasonMinLen
+      ? `${_reasonMinLen - len} more character${_reasonMinLen - len === 1 ? '' : 's'} needed.`
+      : '✓ Reason accepted.';
+}
+
+function closeReasonModal() {
+  document.getElementById('reason-overlay').classList.remove('open');
+  _reasonCallback = null;
+}
+
+function submitReason() {
+  const reason = document.getElementById('reason-textarea').value.trim();
+  if (reason.length < _reasonMinLen) return;
+  closeReasonModal();
+  if (_reasonCallback) _reasonCallback(reason);
+}
+
+// Close on overlay click
+document.getElementById('reason-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('reason-overlay')) closeReasonModal();
+});
+
 /* ─── USER DETAIL PANEL ──────────────────────────────────────────────── */
 let _panelUser = null;
 const _userAdminCache = {}; // username → full admin row (has email, email_verified, role, id)
@@ -1987,111 +2149,194 @@ function closeUserPanel() {
 function renderUserPanel(u) {
   const initials = (u.username || '?').slice(0,2).toUpperCase();
   const joinDate = u.created_at ? new Date(u.created_at).toLocaleDateString() : '—';
-  const ratings  = u.total_ratings ?? '—';
-  const reviews  = u.total_reviews ?? '—';
-  const friends  = u.follower_count ?? '—';
-  const groups   = u.groups_count ?? '—';
+  const ratings  = u.total_ratings    ?? '—';
+  const reviews  = u.total_reviews    ?? '—';
+  const friends  = u.follower_count   ?? '—';
+  const groups   = u.groups_count     ?? '—';
+  const active   = u.is_active !== false; // default true if unknown
 
   document.getElementById('panel-body').innerHTML = `
-    <div class="panel-avatar">
-      ${u.avatar_url ? `<img src="${esc(u.avatar_url)}" alt="" />` : initials}
-    </div>
-    <div class="panel-username">${esc(u.username)}</div>
-    <div class="panel-meta">${esc(u.email || '—')}</div>
-    <div class="panel-meta">Joined ${joinDate}</div>
-    <div class="panel-badges" style="margin-top:8px">
-      ${roleBadge(u.role)}
-      ${u.email_verified ? '<span class="badge badge-verified" style="margin-left:6px">Verified</span>' : '<span class="badge badge-pending" style="margin-left:6px">Unverified</span>'}
+    <!-- Tabs -->
+    <div class="panel-tabs">
+      <div class="panel-tab active" onclick="switchPanelTab('info',this)">User Info</div>
+      <div class="panel-tab" onclick="switchPanelTab('modlog',this)">Mod Log</div>
     </div>
 
-    <div class="panel-stats">
-      <div class="panel-stat"><div class="panel-stat-n">${ratings}</div><div class="panel-stat-l">Ratings</div></div>
-      <div class="panel-stat"><div class="panel-stat-n">${reviews}</div><div class="panel-stat-l">Reviews</div></div>
-      <div class="panel-stat"><div class="panel-stat-n">${friends}</div><div class="panel-stat-l">Followers</div></div>
-      <div class="panel-stat"><div class="panel-stat-n">${groups}</div><div class="panel-stat-l">Groups</div></div>
-    </div>
+    <!-- Info tab -->
+    <div class="panel-tab-content active" id="ptab-info">
+      <div class="panel-avatar">
+        ${u.avatar_url ? `<img src="${esc(u.avatar_url)}" alt="" />` : initials}
+      </div>
+      <div class="panel-username">${esc(u.username)}</div>
+      <div class="panel-meta">${esc(u.email || '—')}</div>
+      <div class="panel-meta">Joined ${joinDate}</div>
+      ${!active ? '<div class="panel-meta" style="color:#e57373;margin-top:4px">⚠ Account suspended</div>' : ''}
+      <div class="panel-badges" style="margin-top:8px">
+        ${roleBadge(u.role)}
+        ${u.email_verified === true
+          ? '<span class="badge badge-verified" style="margin-left:6px">Verified</span>'
+          : '<span class="badge badge-pending" style="margin-left:6px">Unverified</span>'}
+        ${!active ? '<span class="badge" style="margin-left:6px;background:rgba(229,62,62,.2);color:#e57373">Suspended</span>' : ''}
+      </div>
 
-    <!-- Account Actions -->
-    <div class="panel-section">
-      <div class="panel-section-title">Account Actions</div>
-      <div class="panel-actions">
-        <div class="panel-action-row">
-          <select id="panel-role-select" class="role-select" style="flex:1">
-            <option value="user"${u.role==='user'?' selected':''}>user</option>
-            <option value="moderator"${u.role==='moderator'?' selected':''}>moderator</option>
-            <option value="admin"${u.role==='admin'?' selected':''}>admin</option>
-          </select>
-          <button class="btn btn-ghost" onclick="panelChangeRole()">Change Role</button>
+      <div class="panel-stats">
+        <div class="panel-stat"><div class="panel-stat-n">${ratings}</div><div class="panel-stat-l">Ratings</div></div>
+        <div class="panel-stat"><div class="panel-stat-n">${reviews}</div><div class="panel-stat-l">Reviews</div></div>
+        <div class="panel-stat"><div class="panel-stat-n">${friends}</div><div class="panel-stat-l">Followers</div></div>
+        <div class="panel-stat"><div class="panel-stat-n">${groups}</div><div class="panel-stat-l">Groups</div></div>
+      </div>
+
+      <!-- Account Actions -->
+      <div class="panel-section">
+        <div class="panel-section-title">Account Actions</div>
+        <div class="panel-actions">
+          <div class="panel-action-row">
+            <select id="panel-role-select" class="role-select" style="flex:1">
+              <option value="user"${u.role==='user'?' selected':''}>user</option>
+              <option value="moderator"${u.role==='moderator'?' selected':''}>moderator</option>
+              <option value="admin"${u.role==='admin'?' selected':''}>admin</option>
+            </select>
+            <button class="btn btn-ghost" onclick="panelChangeRole()">Change Role</button>
+          </div>
+          <div class="panel-action-row">
+            <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="panelVerifyEmail()">
+              ${u.email_verified === true ? '✓ Email Already Verified' : 'Verify Email Manually'}
+            </button>
+          </div>
+          <div class="panel-action-row">
+            <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="panelResetPassword()">Send Password Reset Email</button>
+          </div>
         </div>
-        <div class="panel-action-row">
-          <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="panelVerifyEmail()">
-            ${u.email_verified ? '✓ Email Already Verified' : 'Verify Email Manually'}
-          </button>
+      </div>
+
+      <!-- Communication -->
+      <div class="panel-section">
+        <div class="panel-section-title">Communication</div>
+        <div class="panel-actions">
+          <div class="panel-action-row">
+            <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="toast('Send Email — coming soon','info')">Send Email</button>
+            <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="toast('App Notification — coming soon','info')">Send Notification</button>
+          </div>
+          <div class="panel-action-row">
+            <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="toast('SMS — coming soon','info')">Send SMS</button>
+          </div>
         </div>
-        <div class="panel-action-row">
-          <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="panelResetPassword()">Send Password Reset Email</button>
+      </div>
+
+      <!-- Danger Zone -->
+      <div class="panel-section danger-zone">
+        <div class="panel-section-title">Danger Zone</div>
+        <div class="panel-actions">
+          <div class="panel-action-row">
+            ${active
+              ? `<button class="btn btn-danger" style="flex:1;justify-content:center" onclick="panelSuspend()">Suspend Account</button>`
+              : `<button class="btn btn-success" style="flex:1;justify-content:center" onclick="panelUnsuspend()">Unsuspend Account</button>`
+            }
+            <button class="btn btn-danger" style="flex:1;justify-content:center" onclick="panelDelete()">Delete Account</button>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Communication -->
-    <div class="panel-section">
-      <div class="panel-section-title">Communication</div>
-      <div class="panel-actions">
-        <div class="panel-action-row">
-          <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="toast('Send Email — coming soon','info')">Send Email</button>
-          <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="toast('App Notification — coming soon','info')">Send Notification</button>
-        </div>
-        <div class="panel-action-row">
-          <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="toast('SMS — coming soon','info')">Send SMS</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Danger Zone -->
-    <div class="panel-section danger-zone">
-      <div class="panel-section-title">Danger Zone</div>
-      <div class="panel-actions">
-        <div class="panel-action-row">
-          <button class="btn btn-danger" style="flex:1;justify-content:center" onclick="panelSuspend()">Suspend Account</button>
-          <button class="btn btn-danger" style="flex:1;justify-content:center" onclick="panelDelete()">Delete Account</button>
-        </div>
-      </div>
+    <!-- Mod Log tab -->
+    <div class="panel-tab-content" id="ptab-modlog">
+      <div id="modlog-body"><div class="loading"><div class="spinner"></div> Loading…</div></div>
     </div>
   `;
+}
+
+function switchPanelTab(tab, el) {
+  document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel-tab-content').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(`ptab-${tab}`).classList.add('active');
+  if (tab === 'modlog' && _panelUser) loadModLog(_panelUser.id);
+}
+
+async function loadModLog(userId) {
+  const el = document.getElementById('modlog-body');
+  if (!el) return;
+  el.innerHTML = '<div class="loading"><div class="spinner"></div> Loading…</div>';
+  try {
+    const rows = await api(`/admin/users/${userId}/moderation-log`);
+    if (!rows || !rows.length) {
+      el.innerHTML = '<div class="empty" style="padding:32px;text-align:center">No moderation history</div>';
+      return;
+    }
+    el.innerHTML = `
+      <table class="mod-log-table">
+        <thead><tr><th>Date</th><th>Action</th><th>Reason</th><th>By</th></tr></thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr>
+              <td style="white-space:nowrap;color:var(--text-muted)">${new Date(r.created_at).toLocaleDateString()}</td>
+              <td><span class="action-badge ab-${r.action}">${r.action.replace(/_/g,' ')}</span></td>
+              <td style="color:var(--text-muted)">${esc(r.reason)}</td>
+              <td style="color:var(--text-muted)">${esc(r.performed_by_username||'admin')}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`;
+  } catch (e) {
+    el.innerHTML = `<div class="empty">Error: ${esc(e.message)}</div>`;
+  }
 }
 
 async function panelChangeRole() {
   if (!_panelUser) return;
   const role = document.getElementById('panel-role-select').value;
-  try {
-    await api(`/admin/users/${_panelUser.id}/role`, {
-      method: 'PUT',
-      body: JSON.stringify({ role }),
-    });
-    toast(`Role updated to ${role}`, 'success');
-    _panelUser.role = role;
-    renderUserPanel(_panelUser);
-    loadUsers();
-  } catch (e) { toast(e.message, 'error'); }
+  showReasonModal({
+    title: `Change role to "${role}"`,
+    chipKey: 'role_change',
+    minLen: 5,
+    destructive: false,
+    onConfirm: async (reason) => {
+      try {
+        const res = await api(`/admin/users/${_panelUser.id}/role`, {
+          method: 'PUT',
+          body: JSON.stringify({ role, reason }),
+        });
+        console.log('panelChangeRole:', res);
+        if (_userAdminCache[_panelUser.username]) _userAdminCache[_panelUser.username].role = role;
+        _panelUser.role = role;
+        toast(`Role updated to ${role}`, 'success');
+        renderUserPanel(_panelUser);
+        loadUsers();
+      } catch (e) {
+        console.error('panelChangeRole error:', e);
+        toast(`Role change failed: ${e.message}`, 'error');
+      }
+    },
+  });
 }
 
 async function panelVerifyEmail() {
   if (!_panelUser) return;
   if (_panelUser.email_verified === true) { toast('Email is already verified', 'info'); return; }
-  console.log('panelVerifyEmail: user_id =', _panelUser.id, 'email =', _panelUser.email);
-  try {
-    const res = await api(`/admin/users/${_panelUser.id}/verify-email`, { method: 'PUT' });
-    console.log('panelVerifyEmail: response =', res);
-    _panelUser.email_verified = true;
-    if (_userAdminCache[_panelUser.username]) _userAdminCache[_panelUser.username].email_verified = true;
-    toast('Email verified', 'success');
-    renderUserPanel(_panelUser);
-    loadUsers();
-  } catch (e) {
-    console.error('panelVerifyEmail error:', e);
-    toast(`Verify failed: ${e.message}`, 'error');
-  }
+  showReasonModal({
+    title: 'Manually verify email',
+    chipKey: 'verify',
+    minLen: 5,
+    destructive: false,
+    onConfirm: async (reason) => {
+      console.log('panelVerifyEmail: user_id =', _panelUser.id);
+      try {
+        const res = await api(`/admin/users/${_panelUser.id}/verify-email`, {
+          method: 'PUT',
+          body: JSON.stringify({ reason }),
+        });
+        console.log('panelVerifyEmail:', res);
+        _panelUser.email_verified = true;
+        if (_userAdminCache[_panelUser.username]) _userAdminCache[_panelUser.username].email_verified = true;
+        toast('Email verified', 'success');
+        renderUserPanel(_panelUser);
+        loadUsers();
+      } catch (e) {
+        console.error('panelVerifyEmail error:', e);
+        toast(`Verify failed: ${e.message}`, 'error');
+      }
+    },
+  });
 }
 
 async function panelResetPassword() {
@@ -2107,38 +2352,81 @@ async function panelResetPassword() {
 
 async function panelSuspend() {
   if (!_panelUser) return;
-  showConfirm('Suspend Account', `Suspend @${_panelUser.username}? They will be unable to log in.`, async () => {
-    console.log('panelSuspend: user_id =', _panelUser.id);
-    try {
-      const res = await api(`/admin/users/${_panelUser.id}/suspend`, { method: 'PUT' });
-      console.log('panelSuspend: response =', res);
-      if (_userAdminCache[_panelUser.username]) _userAdminCache[_panelUser.username].is_active = false;
-      toast(`${_panelUser.username} suspended`, 'success');
-      closeUserPanel();
-      loadUsers();
-    } catch (e) {
-      console.error('panelSuspend error:', e);
-      toast(`Suspend failed: ${e.message}`, 'error');
-    }
+  showReasonModal({
+    title: `Suspend @${_panelUser.username}`,
+    chipKey: 'suspend',
+    minLen: 10,
+    destructive: true,
+    onConfirm: async (reason) => {
+      console.log('panelSuspend: user_id =', _panelUser.id);
+      try {
+        const res = await api(`/admin/users/${_panelUser.id}/suspend`, {
+          method: 'PUT',
+          body: JSON.stringify({ reason }),
+        });
+        console.log('panelSuspend:', res);
+        _panelUser.is_active = false;
+        if (_userAdminCache[_panelUser.username]) _userAdminCache[_panelUser.username].is_active = false;
+        toast(`${_panelUser.username} suspended`, 'success');
+        renderUserPanel(_panelUser);
+        loadUsers();
+      } catch (e) {
+        console.error('panelSuspend error:', e);
+        toast(`Suspend failed: ${e.message}`, 'error');
+      }
+    },
+  });
+}
+
+async function panelUnsuspend() {
+  if (!_panelUser) return;
+  showReasonModal({
+    title: `Unsuspend @${_panelUser.username}`,
+    chipKey: 'unsuspend',
+    minLen: 5,
+    destructive: false,
+    onConfirm: async (reason) => {
+      try {
+        const res = await api(`/admin/users/${_panelUser.id}/unsuspend`, {
+          method: 'PUT',
+          body: JSON.stringify({ reason }),
+        });
+        console.log('panelUnsuspend:', res);
+        _panelUser.is_active = true;
+        if (_userAdminCache[_panelUser.username]) _userAdminCache[_panelUser.username].is_active = true;
+        toast(`${_panelUser.username} unsuspended`, 'success');
+        renderUserPanel(_panelUser);
+        loadUsers();
+      } catch (e) {
+        console.error('panelUnsuspend error:', e);
+        toast(`Unsuspend failed: ${e.message}`, 'error');
+      }
+    },
   });
 }
 
 async function panelDelete() {
   if (!_panelUser) return;
-  const username = _panelUser.username;
-  // Use confirm dialog first
-  showConfirm(
-    'Delete Account',
-    `Permanently delete @${username}? This cannot be undone. All their data will be removed.`,
-    async () => {
+  showReasonModal({
+    title: `Delete @${_panelUser.username}`,
+    chipKey: 'delete',
+    minLen: 20,
+    destructive: true,
+    onConfirm: async (reason) => {
       try {
-        await api(`/admin/users/${_panelUser.id}`, { method: 'DELETE' });
-        toast(`${username} deleted`, 'success');
+        await api(`/admin/users/${_panelUser.id}`, {
+          method: 'DELETE',
+          body: JSON.stringify({ reason }),
+        });
+        toast(`${_panelUser.username} deleted`, 'success');
         closeUserPanel();
         loadUsers();
-      } catch (e) { toast(e.message, 'error'); }
-    }
-  );
+      } catch (e) {
+        console.error('panelDelete error:', e);
+        toast(`Delete failed: ${e.message}`, 'error');
+      }
+    },
+  });
 }
 
 /* ─── UTILITIES ──────────────────────────────────────────────────────── */
