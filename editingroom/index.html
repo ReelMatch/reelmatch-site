@@ -1463,8 +1463,9 @@ async function fetchUsersFiltered(filter) {
   const wrap = document.getElementById('users-table-wrap');
   wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Loading users…</div>`;
   try {
-    const data = await api('/admin/users?page_size=200');
-    if (!data) return;
+    const raw = await api('/admin/users?page_size=200');
+    if (!raw) return;
+    const data = raw.users ?? raw;
     const filtered = since ? data.filter(u => u.created_at && u.created_at >= since) : data;
     state.usersTotal = filtered.length;
     state.usersPage = 1;
@@ -1502,25 +1503,16 @@ async function fetchUsersPage() {
       data = arr.slice((state.usersPage - 1) * ps, state.usersPage * ps);
       state._filteredUsers = arr;
     } else {
-      // All users: server-side pagination
+      // All users: server-side pagination with exact total from API
       const raw = await api(`/admin/users?page=${state.usersPage}&page_size=${state.usersPageSize}`);
       if (!raw) return;
-      data = raw;
-      // Estimate total from admin/stats or use count heuristic
-      if (data.length < state.usersPageSize) {
-        state.usersTotal = (state.usersPage - 1) * state.usersPageSize + data.length;
-      } else {
-        // Fetch total count if we don't know yet
-        if (!state._usersTotalFetched) {
-          try {
-            const stats = await api('/admin/stats');
-            // total_users counts role='user' only; add admins/mods
-            // Just use a generous estimate — we'll know exact on last page
-            state.usersTotal = stats ? (stats.total_users + 5) : 999;
-            state._usersTotalFetched = true;
-          } catch { state.usersTotal = 999; }
-        }
-      }
+      data  = raw.users  ?? raw;   // handle both {users,total} and plain array
+      const exactTotal = raw.total ?? null;
+      state.usersTotal = exactTotal !== null
+        ? exactTotal
+        : (data.length < state.usersPageSize
+            ? (state.usersPage - 1) * state.usersPageSize + data.length
+            : state.usersTotal);
     }
     renderUsersTable(data, state.usersTotal);
   } catch (e) {
