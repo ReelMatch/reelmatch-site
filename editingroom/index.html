@@ -660,6 +660,92 @@
       font-size: 12px;
       border-radius: 4px;
     }
+
+    /* ─── USER DETAIL PANEL ──────────────────────────────────────────── */
+    #user-panel {
+      position: fixed; top: 0; right: 0; bottom: 0;
+      width: 480px;
+      background: var(--bg-surface);
+      border-left: 1px solid var(--border);
+      z-index: 400;
+      display: flex; flex-direction: column;
+      transform: translateX(100%);
+      transition: transform .25s cubic-bezier(.4,0,.2,1);
+      overflow: hidden;
+    }
+    #user-panel.open { transform: translateX(0); }
+    #panel-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.4); z-index: 399;
+    }
+    #panel-overlay.open { display: block; }
+    .panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .panel-header h2 { font-size: 18px; }
+    .btn-panel-close {
+      background: none; border: none;
+      color: var(--text-muted); font-size: 22px; line-height: 1;
+      padding: 4px 8px; border-radius: 4px;
+      transition: color .15s;
+    }
+    .btn-panel-close:hover { color: var(--text-primary); }
+    .panel-body { flex: 1; overflow-y: auto; padding: 24px; }
+    .panel-avatar {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: var(--accent-dim);
+      border: 2px solid var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'DM Serif Display', serif;
+      font-size: 28px; color: var(--accent);
+      margin: 0 auto 16px;
+      overflow: hidden;
+    }
+    .panel-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .panel-username {
+      font-family: 'DM Serif Display', serif;
+      font-size: 24px; text-align: center; margin-bottom: 6px;
+    }
+    .panel-meta {
+      text-align: center; color: var(--text-muted);
+      font-size: 13px; margin-bottom: 4px;
+    }
+    .panel-badges { text-align: center; margin-bottom: 20px; }
+    .panel-stats {
+      display: grid; grid-template-columns: repeat(4,1fr);
+      gap: 1px; background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 8px; margin-bottom: 24px;
+      overflow: hidden;
+    }
+    .panel-stat {
+      background: var(--bg-primary);
+      padding: 12px 8px; text-align: center;
+    }
+    .panel-stat-n {
+      font-family: 'DM Serif Display', serif;
+      font-size: 20px; color: var(--text-primary); line-height: 1;
+    }
+    .panel-stat-l { font-size: 10px; color: var(--text-muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .6px; }
+    .panel-section { margin-bottom: 20px; }
+    .panel-section-title {
+      font-size: 11px; font-weight: 600;
+      color: var(--text-muted); text-transform: uppercase;
+      letter-spacing: .8px; margin-bottom: 10px;
+    }
+    .panel-actions { display: flex; flex-direction: column; gap: 8px; }
+    .panel-action-row { display: flex; gap: 8px; align-items: center; }
+    .panel-action-row .btn { flex: 1; justify-content: center; }
+    .panel-action-row select { flex: 1; }
+    .danger-zone {
+      border: 1px solid rgba(229,62,62,.3);
+      border-radius: 8px; padding: 16px;
+      background: rgba(229,62,62,.05);
+    }
+    .danger-zone .panel-section-title { color: #e57373; }
   </style>
 </head>
 <body>
@@ -899,6 +985,18 @@
 
 <!-- ═══════════════ TOAST CONTAINER ══════════════════════════════════ -->
 <div id="toast-container"></div>
+
+<!-- ═══════════════ USER DETAIL PANEL ════════════════════════════════ -->
+<div id="panel-overlay" onclick="closeUserPanel()"></div>
+<div id="user-panel">
+  <div class="panel-header">
+    <h2 id="panel-title">User Details</h2>
+    <button class="btn-panel-close" onclick="closeUserPanel()">×</button>
+  </div>
+  <div class="panel-body" id="panel-body">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════ JAVASCRIPT ═══════════════════ -->
 <script>
@@ -1348,7 +1446,7 @@ function renderUsersTable(users) {
         </tr></thead>
         <tbody>
           ${users.map(u => `
-            <tr>
+            <tr onclick="openUserPanel('${esc(u.username)}')" style="cursor:pointer">
               <td><strong>${esc(u.username)}</strong></td>
               <td style="color:var(--text-muted)">${esc(u.email||'—')}</td>
               <td>${roleBadge(u.role)}</td>
@@ -1680,6 +1778,175 @@ async function loadImportStatus() {
   }
 }
 
+/* ─── USER DETAIL PANEL ──────────────────────────────────────────────── */
+let _panelUser = null;
+
+async function openUserPanel(username) {
+  document.getElementById('panel-title').textContent = username;
+  document.getElementById('panel-body').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  document.getElementById('user-panel').classList.add('open');
+  document.getElementById('panel-overlay').classList.add('open');
+  try {
+    const u = await api(`/users/${username}`);
+    if (!u) return;
+    _panelUser = u;
+    // Also try to get stats from admin endpoint
+    renderUserPanel(u);
+  } catch (e) {
+    document.getElementById('panel-body').innerHTML = `<div class="empty">Error loading user: ${esc(e.message)}</div>`;
+  }
+}
+
+function closeUserPanel() {
+  document.getElementById('user-panel').classList.remove('open');
+  document.getElementById('panel-overlay').classList.remove('open');
+  _panelUser = null;
+}
+
+function renderUserPanel(u) {
+  const initials = (u.username || '?').slice(0,2).toUpperCase();
+  const joinDate = u.created_at ? new Date(u.created_at).toLocaleDateString() : '—';
+  const ratings  = u.total_ratings ?? '—';
+  const reviews  = u.total_reviews ?? '—';
+  const friends  = u.follower_count ?? '—';
+  const groups   = u.groups_count ?? '—';
+
+  document.getElementById('panel-body').innerHTML = `
+    <div class="panel-avatar">
+      ${u.avatar_url ? `<img src="${esc(u.avatar_url)}" alt="" />` : initials}
+    </div>
+    <div class="panel-username">${esc(u.username)}</div>
+    <div class="panel-meta">${esc(u.email || '—')}</div>
+    <div class="panel-meta">Joined ${joinDate}</div>
+    <div class="panel-badges" style="margin-top:8px">
+      ${roleBadge(u.role)}
+      ${u.email_verified ? '<span class="badge badge-verified" style="margin-left:6px">Verified</span>' : '<span class="badge badge-pending" style="margin-left:6px">Unverified</span>'}
+    </div>
+
+    <div class="panel-stats">
+      <div class="panel-stat"><div class="panel-stat-n">${ratings}</div><div class="panel-stat-l">Ratings</div></div>
+      <div class="panel-stat"><div class="panel-stat-n">${reviews}</div><div class="panel-stat-l">Reviews</div></div>
+      <div class="panel-stat"><div class="panel-stat-n">${friends}</div><div class="panel-stat-l">Followers</div></div>
+      <div class="panel-stat"><div class="panel-stat-n">${groups}</div><div class="panel-stat-l">Groups</div></div>
+    </div>
+
+    <!-- Account Actions -->
+    <div class="panel-section">
+      <div class="panel-section-title">Account Actions</div>
+      <div class="panel-actions">
+        <div class="panel-action-row">
+          <select id="panel-role-select" class="role-select" style="flex:1">
+            <option value="user"${u.role==='user'?' selected':''}>user</option>
+            <option value="moderator"${u.role==='moderator'?' selected':''}>moderator</option>
+            <option value="admin"${u.role==='admin'?' selected':''}>admin</option>
+          </select>
+          <button class="btn btn-ghost" onclick="panelChangeRole()">Change Role</button>
+        </div>
+        <div class="panel-action-row">
+          <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="panelVerifyEmail()">
+            ${u.email_verified ? '✓ Email Already Verified' : 'Verify Email Manually'}
+          </button>
+        </div>
+        <div class="panel-action-row">
+          <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="panelResetPassword()">Send Password Reset Email</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Communication -->
+    <div class="panel-section">
+      <div class="panel-section-title">Communication</div>
+      <div class="panel-actions">
+        <div class="panel-action-row">
+          <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="toast('Send Email — coming soon','info')">Send Email</button>
+          <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="toast('App Notification — coming soon','info')">Send Notification</button>
+        </div>
+        <div class="panel-action-row">
+          <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="toast('SMS — coming soon','info')">Send SMS</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="panel-section danger-zone">
+      <div class="panel-section-title">Danger Zone</div>
+      <div class="panel-actions">
+        <div class="panel-action-row">
+          <button class="btn btn-danger" style="flex:1;justify-content:center" onclick="panelSuspend()">Suspend Account</button>
+          <button class="btn btn-danger" style="flex:1;justify-content:center" onclick="panelDelete()">Delete Account</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function panelChangeRole() {
+  if (!_panelUser) return;
+  const role = document.getElementById('panel-role-select').value;
+  try {
+    await api(`/admin/users/${_panelUser.id}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
+    });
+    toast(`Role updated to ${role}`, 'success');
+    _panelUser.role = role;
+    renderUserPanel(_panelUser);
+    loadUsers();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function panelVerifyEmail() {
+  if (!_panelUser || _panelUser.email_verified) return;
+  try {
+    await api(`/admin/users/${_panelUser.id}/verify-email`, { method: 'PUT' });
+    toast('Email verified', 'success');
+    _panelUser.email_verified = true;
+    renderUserPanel(_panelUser);
+    loadUsers();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function panelResetPassword() {
+  if (!_panelUser) return;
+  try {
+    await api('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email: _panelUser.email }),
+    });
+    toast('Password reset email sent', 'success');
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function panelSuspend() {
+  if (!_panelUser) return;
+  showConfirm('Suspend Account', `Suspend @${_panelUser.username}? They will be unable to log in.`, async () => {
+    try {
+      await api(`/admin/users/${_panelUser.id}/suspend`, { method: 'PUT' });
+      toast(`${_panelUser.username} suspended`, 'success');
+      closeUserPanel();
+      loadUsers();
+    } catch (e) { toast(e.message, 'error'); }
+  });
+}
+
+async function panelDelete() {
+  if (!_panelUser) return;
+  const username = _panelUser.username;
+  // Use confirm dialog first
+  showConfirm(
+    'Delete Account',
+    `Permanently delete @${username}? This cannot be undone. All their data will be removed.`,
+    async () => {
+      try {
+        await api(`/admin/users/${_panelUser.id}`, { method: 'DELETE' });
+        toast(`${username} deleted`, 'success');
+        closeUserPanel();
+        loadUsers();
+      } catch (e) { toast(e.message, 'error'); }
+    }
+  );
+}
+
 /* ─── UTILITIES ──────────────────────────────────────────────────────── */
 function esc(s) {
   if (!s) return '';
@@ -1693,6 +1960,7 @@ document.getElementById('login-password').addEventListener('keydown', e => {
 document.getElementById('login-email').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('login-password').focus();
 });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeUserPanel(); });
 
 /* ─── INIT ───────────────────────────────────────────────────────────── */
 (function init() {
