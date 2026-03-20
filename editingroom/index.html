@@ -2588,14 +2588,36 @@ async function searchReports() {
   fetchReportsPage();
 }
 
-function _detectReportsPageSize() {
+function _measureAndSetReportsLayout() {
   const wrap = document.getElementById('reports-table-wrap');
-  const h = wrap ? wrap.clientHeight : (window.innerHeight - 300);
-  return Math.max(5, Math.min(30, Math.floor((h || 400) / 56)));
+  if (!wrap) return;
+  // Measure the top of the wrap relative to the viewport after paint
+  const wrapTop = wrap.getBoundingClientRect().top;
+  // Reserve space for pagination controls + bottom padding
+  const paginationH = 52;
+  const bottomPad = 20;
+  const available = Math.max(200, window.innerHeight - wrapTop - paginationH - bottomPad);
+  // Lock container height so page_size stays consistent across fetches
+  wrap.style.height = `${available}px`;
+  wrap.style.overflowY = 'auto';
+  reportsPageSize = Math.max(5, Math.min(30, Math.floor(available / 56)));
+  _reportsPageSizeLocked = true;
+  console.log(`[Reports] page_size locked to ${reportsPageSize} (available: ${available}px, wrapTop: ${Math.round(wrapTop)}px)`);
+}
+
+function _initReportsPageSize() {
+  return new Promise(resolve => {
+    // Double rAF: first tick lets section become visible, second ensures layout is painted
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        _measureAndSetReportsLayout();
+        resolve();
+      });
+    });
+  });
 }
 
 async function fetchReportsPage() {
-  reportsPageSize = _detectReportsPageSize();
   const wrap = document.getElementById('reports-table-wrap');
   wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Loading reports…</div>`;
   const params = new URLSearchParams({
