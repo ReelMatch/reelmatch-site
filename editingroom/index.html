@@ -1173,30 +1173,53 @@
     .health-critical { background: rgba(192,57,43,.15);  color: var(--accent); }
     .investor-charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
     @media(max-width:700px) { .investor-charts-row { grid-template-columns: 1fr; } }
-    /* Genre cards */
-    .genre-scroll-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 20px; scroll-snap-type: x mandatory; }
-    .genre-scroll-row::-webkit-scrollbar { height: 4px; }
-    .genre-scroll-row::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-    .genre-card {
-      flex: 0 0 auto; scroll-snap-align: start;
-      background: var(--bg-surface); border: 1px solid var(--border);
-      border-radius: 10px; padding: 14px 18px; cursor: pointer;
-      transition: border-color .15s, box-shadow .15s; min-width: 140px;
+    /* Genre carousel */
+    .genre-carousel-wrap { position: relative; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .genre-carousel-btn {
+      flex: 0 0 40px; width: 40px; height: 40px; border-radius: 50%;
+      border: none; background: var(--accent); color: #fff;
+      font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: opacity .2s; z-index: 1;
     }
-    .genre-card:hover { border-color: var(--accent); }
-    .genre-card.open { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(192,57,43,.2); }
-    .genre-card-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .genre-carousel-btn:disabled { opacity: .3; cursor: default; }
+    .genre-scroll-outer { flex: 1; overflow: hidden; }
+    .genre-scroll-row { display: flex; gap: 12px; scroll-snap-type: x mandatory; scroll-behavior: smooth; }
+    .genre-card {
+      flex: 0 0 180px; width: 180px; height: 120px; scroll-snap-align: start;
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px; cursor: pointer; box-sizing: border-box;
+      transition: border-color .15s, box-shadow .15s, transform .15s;
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .genre-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .genre-card.open {
+      border-color: var(--accent); transform: translateY(-2px);
+      background: rgba(192,57,43,.07);
+      box-shadow: 0 0 0 2px rgba(192,57,43,.2);
+    }
+    .genre-card-name { font-family: 'DM Serif Display', serif; font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .genre-card-rating { font-size: 13px; color: #f5a623; }
     .genre-card-meta { font-size: 11px; color: var(--text-muted); }
+    .genre-scroll-dots { display: flex; justify-content: center; gap: 6px; margin-bottom: 16px; }
+    .genre-scroll-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); transition: background .2s; cursor: pointer; }
+    .genre-scroll-dot.active { background: var(--accent); }
+    /* Expanded genre panel */
     .genre-movies-panel {
       background: var(--bg-surface); border: 1px solid var(--border);
-      border-radius: 10px; margin-bottom: 20px; overflow: hidden;
-      display: none;
+      border-radius: 12px; margin-bottom: 20px; overflow: hidden;
+      max-height: 0; transition: max-height .3s ease;
     }
-    .genre-movies-panel.open { display: block; }
-    .genre-movies-panel table { width: 100%; border-collapse: collapse; }
-    .genre-movies-panel th { padding: 10px 14px; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--text-muted); border-bottom: 1px solid var(--border); font-weight: 600; text-align: left; }
-    .genre-movies-panel td { padding: 10px 14px; font-size: 13px; border-bottom: 1px solid var(--border); }
-    .genre-movies-panel tr:last-child td { border-bottom: none; }
+    .genre-movies-panel.open { max-height: 400px; }
+    .genre-panel-inner { padding: 16px; }
+    .genre-panel-heading { font-family: 'DM Serif Display', serif; font-size: 17px; font-weight: 700; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
+    .genre-panel-link { font-size: 12px; font-family: inherit; color: var(--text-muted); pointer-events: none; opacity: .5; }
+    .genre-panel-movies { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 4px; }
+    .genre-panel-movie { flex: 0 0 auto; width: 80px; text-align: center; }
+    .genre-panel-poster { width: 60px; height: 90px; border-radius: 6px; object-fit: cover; margin: 0 auto 6px; display: block; background: var(--border); }
+    .genre-panel-poster-placeholder { width: 60px; height: 90px; border-radius: 6px; background: var(--border); display: flex; align-items: center; justify-content: center; font-size: 22px; margin: 0 auto 6px; }
+    .genre-panel-title { font-size: 11px; font-weight: 700; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; margin-bottom: 3px; }
+    .genre-panel-year { font-size: 10px; color: var(--text-muted); margin-bottom: 2px; }
+    .genre-panel-stars { font-size: 11px; color: #f5a623; }
   </style>
 </head>
 <body>
