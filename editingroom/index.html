@@ -2707,26 +2707,37 @@ function renderReportsTable(reports, total) {
           }).join('')}
         </tbody>
       </table>
-    </div>
-    ${_reportsPaginationHtml(total, reportsPage, totalPages)}`;
+    </div>`;
+  renderReportsPagination(total);
 }
 
-function _reportsPaginationHtml(total, page, totalPages) {
-  if (totalPages <= 1) return '';
-  const btn = (p, label, disabled = false, active = false) =>
-    `<button class="btn btn-sm ${active ? 'btn-primary' : 'btn-ghost'}" ${disabled ? 'disabled' : ''} onclick="reportsGoToPage(${p})">${label}</button>`;
-  const pages = [];
-  for (let p = Math.max(1, page - 2); p <= Math.min(totalPages, page + 2); p++) {
-    pages.push(btn(p, p, false, p === page));
+function renderReportsPagination(total) {
+  let el = document.getElementById('reports-pagination');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'reports-pagination';
+    document.getElementById('reports-table-wrap').after(el);
   }
-  return `<div class="pagination" style="display:flex;align-items:center;gap:6px;padding:12px 0;justify-content:center;flex-wrap:wrap">
-    ${btn(1, '«', page === 1)}
-    ${btn(page - 1, '‹', page === 1)}
-    ${pages.join('')}
-    ${btn(page + 1, '›', page === totalPages)}
-    ${btn(totalPages, '»', page === totalPages)}
-    <span style="color:var(--text-muted);font-size:12px;margin-left:8px">${total} total</span>
-  </div>`;
+  const ps    = reportsPageSize || 20;
+  const page  = reportsPage;
+  const pages = Math.ceil(total / ps) || 1;
+
+  if (total <= ps) { el.innerHTML = ''; return; }
+
+  const from = (page - 1) * ps + 1;
+  const to   = Math.min(page * ps, total);
+
+  el.innerHTML = `
+    <div class="pagination-wrap">
+      <span class="pg-count">Showing ${from}–${to} of ${total} reports</span>
+      <div class="pg-controls">
+        <button class="pg-btn" ${page===1?'disabled':''} onclick="reportsGoToPage(1)" title="First">|&lt;</button>
+        <button class="pg-btn" ${page===1?'disabled':''} onclick="reportsGoToPage(${page-1})" title="Previous">&lt;</button>
+        <span class="pg-label">Page <span class="pg-num">${page}</span> of ${pages}</span>
+        <button class="pg-btn" ${page>=pages?'disabled':''} onclick="reportsGoToPage(${page+1})" title="Next">&gt;</button>
+        <button class="pg-btn" ${page>=pages?'disabled':''} onclick="reportsGoToPage(${pages})" title="Last">&gt;|</button>
+      </div>
+    </div>`;
 }
 
 function reportsGoToPage(p) {
