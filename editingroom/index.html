@@ -191,25 +191,162 @@
     /* ─── STAT CARDS ─────────────────────────────────────────────────── */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 16px;
-      margin-bottom: 32px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .stats-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .stats-grid-wide {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 14px;
     }
     .stat-card {
       background: var(--bg-surface);
       border: 1px solid var(--border);
       border-left: 3px solid var(--accent);
       border-radius: 10px;
-      padding: 24px 20px;
+      padding: 20px 18px;
+      transition: transform .15s, box-shadow .15s;
     }
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(0,0,0,.18);
+    }
+    .stat-card.danger {
+      border-left-color: #e53e3e;
+    }
+    .stat-card.danger .stat-number { color: #e53e3e; }
     .stat-number {
       font-family: 'DM Serif Display', serif;
-      font-size: 36px;
+      font-size: 2.5rem;
       color: var(--text-primary);
       line-height: 1;
       margin-bottom: 6px;
     }
-    .stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+    .stat-number.sm { font-size: 1.8rem; }
+    .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+    .stat-sublabel { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+
+    /* Wide card sub-stats */
+    .wide-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 22px;
+    }
+    .wide-card h3 {
+      font-size: 14px;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      margin-bottom: 16px;
+    }
+    .mini-stats { display: flex; gap: 24px; flex-wrap: wrap; }
+    .mini-stat { }
+    .mini-stat-number {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.6rem;
+      color: var(--text-primary);
+      line-height: 1;
+    }
+    .mini-stat-label { font-size: 11px; color: var(--text-muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .8px; }
+
+    /* Import card */
+    .import-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 22px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .import-card h3 {
+      font-size: 14px;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      margin-bottom: 8px;
+    }
+    .import-detail { font-size: 13.5px; color: var(--text-primary); }
+    .import-meta   { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+
+    /* Skeleton loader */
+    .skeleton-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .skeleton-box {
+      height: 90px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+    .skeleton-box::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.06) 50%, transparent 100%);
+      animation: shimmer 1.4s infinite;
+    }
+    @keyframes shimmer {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    /* Health dot */
+    .health-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #38a169;
+      display: inline-block;
+      margin-left: 6px;
+      vertical-align: middle;
+      animation: pulse-green 2s ease-in-out infinite;
+    }
+    .health-dot.hidden { display: none; }
+    @keyframes pulse-green {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(56,161,105,.6); }
+      50%       { box-shadow: 0 0 0 5px rgba(56,161,105,0); }
+    }
+
+    /* Dashboard header row */
+    .dash-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 22px;
+    }
+    .dash-updated {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .error-card {
+      background: rgba(229,62,62,.1);
+      border: 1px solid rgba(229,62,62,.3);
+      border-radius: 10px;
+      padding: 24px;
+      color: #e57373;
+      font-size: 14px;
+    }
 
     /* ─── TABLES ─────────────────────────────────────────────────────── */
     .table-wrap {
@@ -545,7 +682,7 @@
     </div>
     <nav class="sidebar-nav">
       <div class="nav-item active" data-section="dashboard"  onclick="navigate('dashboard')">
-        <span class="nav-icon">🎬</span> Dashboard
+        <span class="nav-icon">🎬</span> Dashboard<span class="health-dot hidden" id="health-dot" title="System healthy"></span>
       </div>
       <div class="nav-item" data-section="users"     onclick="navigate('users')">
         <span class="nav-icon">👥</span> Users
@@ -574,19 +711,24 @@
 
     <!-- ── DASHBOARD ──────────────────────────────────────────────── -->
     <div class="section active" id="sec-dashboard">
-      <div class="section-header">
+      <div class="dash-header">
         <div>
-          <h1 class="section-title">Dashboard</h1>
-          <div class="section-subtitle">Platform overview</div>
+          <h1 class="section-title">System Health</h1>
+          <div class="section-subtitle">Live platform metrics</div>
+          <div class="dash-updated" id="dash-updated"></div>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="loadDashboard()">↺ Refresh</button>
       </div>
-      <div class="stats-grid" id="stats-grid">
-        <div class="loading"><div class="spinner"></div> Loading stats…</div>
-      </div>
-      <div class="activity-section">
-        <h2>Recent Activity</h2>
-        <div id="activity-list"><div class="loading"><div class="spinner"></div></div></div>
+      <div id="dashboard-body">
+        <!-- skeleton shown on first load -->
+        <div class="skeleton-grid">
+          <div class="skeleton-box"></div><div class="skeleton-box"></div>
+          <div class="skeleton-box"></div><div class="skeleton-box"></div>
+        </div>
+        <div class="skeleton-grid">
+          <div class="skeleton-box"></div><div class="skeleton-box"></div>
+          <div class="skeleton-box"></div><div class="skeleton-box"></div>
+        </div>
       </div>
     </div>
 
@@ -930,6 +1072,7 @@ function bootApp() {
   document.getElementById('info-api-base').textContent = API_BASE;
   buildThemeGrid('settings-theme-grid');
   renderEmailTemplateList();
+  startDashAutoRefresh();
   navigate(state.section);
 }
 
@@ -951,66 +1094,151 @@ function navigate(section) {
 }
 
 /* ─── DASHBOARD ──────────────────────────────────────────────────────── */
+let _dashInterval = null;
+
 async function loadDashboard() {
-  const grid = document.getElementById('stats-grid');
-  const actList = document.getElementById('activity-list');
-  grid.innerHTML = `<div class="loading" style="grid-column:1/-1"><div class="spinner"></div> Loading…</div>`;
-  actList.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+  const body = document.getElementById('dashboard-body');
 
-  // Parallel fetch
-  const [searchRes, moviesRes, modStats, feedRes] = await Promise.allSettled([
-    api('/users/search?q=&page_size=100'),
-    api('/movies/search?q=avengers&page_size=1'),
-    api('/moderation/reports/stats'),
-    api('/users/feed'),
-  ]);
+  // Show skeleton on first load (no real content yet)
+  if (!body.querySelector('.stats-grid')) {
+    body.innerHTML = skeletonHTML();
+  }
 
-  const userCount   = searchRes.status   === 'fulfilled' && Array.isArray(searchRes.value)  ? searchRes.value.length  : '—';
-  const movieCount  = moviesRes.status   === 'fulfilled' && moviesRes.value?.total_results   ? moviesRes.value.total_results.toLocaleString() : '1,361+';
-  const reportCount = modStats.status    === 'fulfilled' && modStats.value?.by_status?.pending ? modStats.value.by_status.pending : 0;
+  let s;
+  try {
+    s = await api('/admin/stats');
+    if (!s) return;
+  } catch (e) {
+    body.innerHTML = `<div class="error-card">⚠ Failed to load stats: ${esc(e.message)}</div>`;
+    document.getElementById('health-dot').classList.add('hidden');
+    return;
+  }
 
-  const cards = [
-    { label: 'Total Users',     value: typeof userCount === 'number' ? userCount.toLocaleString() : userCount,  note: 'registered accounts'   },
-    { label: 'Movies Cached',   value: movieCount,        note: 'in Supabase movies table' },
-    { label: 'Seed Ratings',    value: '9,507,922',       note: 'MovieLens 25M dataset'    },
-    { label: 'Pending Reports', value: String(reportCount), note: 'awaiting moderation'    },
-  ];
+  document.getElementById('health-dot').classList.remove('hidden');
+  document.getElementById('dash-updated').textContent =
+    'Updated ' + new Date().toLocaleTimeString();
 
-  grid.innerHTML = cards.map(c => `
-    <div class="stat-card">
-      <div class="stat-number">${c.value}</div>
-      <div class="stat-label">${c.label}</div>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${c.note}</div>
+  const pending = s.pending_reports || 0;
+  const li = s.last_import;
+
+  body.innerHTML = `
+    <!-- Row 1: 4 large cards -->
+    <div class="stats-grid">
+      ${bigCard('Total Users',    s.total_users,    'registered accounts')}
+      ${bigCard('Total Ratings',  s.total_ratings,  'user film ratings')}
+      ${bigCard('Movies Cached',  s.movies_cached,  'in Supabase catalogue')}
+      ${bigCard('Pending Reports', pending, 'awaiting moderation', pending > 0)}
     </div>
-  `).join('');
 
-  // Activity feed
-  if (feedRes.status === 'fulfilled' && Array.isArray(feedRes.value) && feedRes.value.length) {
-    const events = feedRes.value.slice(0, 10);
-    actList.innerHTML = `<div class="activity-list">` + events.map(e => `
-      <div class="activity-item">
-        <div class="activity-dot"></div>
-        <div>
-          <div class="activity-text">${formatEvent(e)}</div>
-          <div class="activity-meta">${formatDate(e.created_at)}</div>
+    <!-- Row 2: 4 medium cards -->
+    <div class="stats-grid-2">
+      ${medCard('New Users Today',      s.new_users_today,    'joined since midnight')}
+      ${medCard('Ratings Today',        s.ratings_today,      'ratings logged today')}
+      ${medCard('Active Group Sessions',s.active_sessions,    'sessions in progress')}
+      ${medCard('Achievements Earned',  s.achievements_earned,'total unlocked')}
+    </div>
+
+    <!-- Row 3: 2 wide cards -->
+    <div class="stats-grid-wide">
+      <div class="wide-card">
+        <h3>Seed Data</h3>
+        <div class="mini-stats">
+          ${miniStat(s.seed_ratings,          'Seed Ratings')}
+          ${miniStat(s.movies_with_streaming, 'With Streaming')}
+          ${miniStat(s.average_rating,        'Avg User Rating')}
         </div>
       </div>
-    `).join('') + `</div>`;
-  } else {
-    actList.innerHTML = `<div class="empty">No recent activity found.</div>`;
-  }
+      <div class="wide-card">
+        <h3>Social Graph</h3>
+        <div class="mini-stats">
+          ${miniStat(s.total_follows,      'Follows')}
+          ${miniStat(s.total_friendships,  'Friendships')}
+          ${miniStat(s.total_reviews,      'Reviews')}
+          ${miniStat(s.total_groups,       'Groups')}
+        </div>
+      </div>
+    </div>
+
+    <!-- Last import -->
+    <div class="import-card">
+      <div>
+        <h3>Last Import Job</h3>
+        ${li
+          ? `<div class="import-detail">${esc(li.source)} &mdash; <strong>${esc(li.status)}</strong> &mdash; ${(li.processed_records||0).toLocaleString()} records</div>
+             <div class="import-meta">${formatDate(li.created_at)}</div>`
+          : `<div class="import-meta">No import jobs found</div>`}
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="navigate('settings')">Import Status ↗</button>
+    </div>
+  `;
+
+  // Animate numbers counting up
+  body.querySelectorAll('[data-count]').forEach(el => countUp(el));
 }
 
-function formatEvent(e) {
-  const type = (e.event_type || '').replace(/_/g, ' ');
-  const user = e.username || e.user_id?.slice(0,8) || 'someone';
-  const movie = e.data?.title || e.movie_title || '';
-  if (movie) return `<strong>${user}</strong> ${type}: ${movie}`;
-  return `<strong>${user}</strong> ${type}`;
+function skeletonHTML() {
+  const row = n => `<div class="skeleton-grid">${'<div class="skeleton-box"></div>'.repeat(n)}</div>`;
+  return row(4) + row(4) + `<div class="skeleton-grid" style="grid-template-columns:1fr 1fr">${'<div class="skeleton-box" style="height:110px"></div>'.repeat(2)}</div>`;
 }
+
+function bigCard(label, value, sublabel, isDanger = false) {
+  const n = Number(value);
+  const display = isNaN(n) ? value : n.toLocaleString();
+  return `
+    <div class="stat-card${isDanger ? ' danger' : ''}">
+      <div class="stat-number" data-count="${isNaN(n)?'':n}">${isDanger ? '⚠ ' : ''}${display}</div>
+      <div class="stat-label">${label}</div>
+      <div class="stat-sublabel">${sublabel}</div>
+    </div>`;
+}
+
+function medCard(label, value, sublabel) {
+  const n = Number(value);
+  const display = isNaN(n) ? value : n.toLocaleString();
+  return `
+    <div class="stat-card">
+      <div class="stat-number sm" data-count="${isNaN(n)?'':n}">${display}</div>
+      <div class="stat-label">${label}</div>
+      <div class="stat-sublabel">${sublabel}</div>
+    </div>`;
+}
+
+function miniStat(value, label) {
+  const n = Number(value);
+  const display = isNaN(n) ? value : n.toLocaleString();
+  return `
+    <div class="mini-stat">
+      <div class="mini-stat-number" data-count="${isNaN(n)?'':n}">${display}</div>
+      <div class="mini-stat-label">${label}</div>
+    </div>`;
+}
+
+function countUp(el) {
+  const target = parseInt(el.dataset.count, 10);
+  if (isNaN(target) || target === 0) return;
+  const duration = 600;
+  const start = performance.now();
+  const prefix = el.textContent.startsWith('⚠') ? '⚠ ' : '';
+  function step(now) {
+    const p = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    el.textContent = prefix + Math.round(target * ease).toLocaleString();
+    if (p < 1) requestAnimationFrame(step);
+    else el.textContent = prefix + target.toLocaleString();
+  }
+  requestAnimationFrame(step);
+}
+
 function formatDate(s) {
   if (!s) return '';
   try { return new Date(s).toLocaleString(); } catch { return s; }
+}
+
+function startDashAutoRefresh() {
+  if (_dashInterval) clearInterval(_dashInterval);
+  _dashInterval = setInterval(() => {
+    if (state.section === 'dashboard') loadDashboard();
+  }, 30000);
 }
 
 /* ─── USERS ──────────────────────────────────────────────────────────── */
