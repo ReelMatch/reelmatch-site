@@ -1283,8 +1283,8 @@ async function fetchUsersFiltered(filter) {
   }
   try {
     // Fetch all and filter client-side (API doesn't support date filter)
-    const data = await api(`/users/search?q=&page_size=200`);
-    console.log('users/search response:', data);
+    const data = await api('/admin/users?page_size=200');
+    console.log('admin/users response:', data);
     if (!data) return;
     const filtered = since
       ? data.filter(u => u.created_at && u.created_at >= since)
@@ -1301,27 +1301,34 @@ async function loadUsers() {
   state.userQuery = '';
   document.getElementById('user-search').value = '';
   const subtitle = document.querySelector('#sec-users .section-subtitle');
-  if (subtitle) subtitle.textContent = 'Search and manage accounts';
-  await fetchUsers('');
-}
-async function searchUsers() {
-  const q = document.getElementById('user-search').value.trim();
-  state.userQuery = q;
-  state.usersPage = 1;
-  await fetchUsers(q);
-}
-async function fetchUsers(query) {
+  if (subtitle) subtitle.textContent = 'All accounts';
   const wrap = document.getElementById('users-table-wrap');
   wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Loading users…</div>`;
   try {
-    const url = `/users/search?q=${encodeURIComponent(query)}&page_size=50`;
-    console.log('fetchUsers GET', url);
-    const data = await api(url);
-    console.log('fetchUsers response:', data);
+    const data = await api('/admin/users?page_size=100');
+    if (!data) return;
+    renderUsersTable(data);
+  } catch (e) {
+    console.error('loadUsers error:', e);
+    wrap.innerHTML = `<div class="empty">Error: ${esc(e.message)}</div>`;
+    toast(e.message, 'error');
+  }
+}
+async function searchUsers() {
+  const q = document.getElementById('user-search').value.trim();
+  if (!q) { loadUsers(); return; }
+  state.userQuery = q;
+  state.usersPage = 1;
+  const subtitle = document.querySelector('#sec-users .section-subtitle');
+  if (subtitle) subtitle.textContent = `Results for "${esc(q)}"`;
+  const wrap = document.getElementById('users-table-wrap');
+  wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Searching…</div>`;
+  try {
+    const data = await api(`/users/search?q=${encodeURIComponent(q)}&page_size=50`);
     if (!data) return;
     renderUsersTable(Array.isArray(data) ? data : (data.users || data.results || []));
   } catch (e) {
-    console.error('fetchUsers error:', e);
+    console.error('searchUsers error:', e);
     wrap.innerHTML = `<div class="empty">Error: ${esc(e.message)}</div>`;
     toast(e.message, 'error');
   }
