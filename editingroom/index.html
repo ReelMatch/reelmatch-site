@@ -780,7 +780,7 @@
       <div class="section-header">
         <div>
           <h1 class="section-title">Movies</h1>
-          <div class="section-subtitle">Cached movie catalogue</div>
+          <div class="section-subtitle" id="movies-subtitle">Cached movie catalogue</div>
         </div>
       </div>
       <div class="search-bar">
@@ -1172,8 +1172,11 @@ async function loadDashboard() {
     </div>
   `;
 
-  // Animate numbers counting up
-  body.querySelectorAll('[data-count]').forEach(el => countUp(el));
+  // Animate numbers counting up — only once per session
+  if (!sessionStorage.getItem('stats_animated')) {
+    body.querySelectorAll('[data-count]').forEach(el => countUp(el));
+    sessionStorage.setItem('stats_animated', '1');
+  }
 }
 
 function skeletonHTML() {
@@ -1522,15 +1525,25 @@ async function resolveReport(id, status) {
 /* ─── MOVIES ─────────────────────────────────────────────────────────── */
 async function loadMovies() {
   document.getElementById('movie-search').value = '';
-  await fetchMovies('trending');
+  document.getElementById('movies-subtitle').textContent = 'Trending Now';
+  const wrap = document.getElementById('movies-table-wrap');
+  wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Loading trending movies…</div>`;
+  try {
+    const data = await api('/movies/trending');
+    if (!data) return;
+    const movies = Array.isArray(data) ? data : (data.results || []);
+    renderMoviesTable(movies);
+  } catch (e) {
+    wrap.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+    toast(e.message, 'error');
+  }
 }
 async function searchMovies() {
-  const q = document.getElementById('movie-search').value.trim() || 'a';
-  await fetchMovies(q);
-}
-async function fetchMovies(q) {
+  const q = document.getElementById('movie-search').value.trim();
+  if (!q) { loadMovies(); return; }
+  document.getElementById('movies-subtitle').textContent = 'Search Results';
   const wrap = document.getElementById('movies-table-wrap');
-  wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Loading movies…</div>`;
+  wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Searching…</div>`;
   try {
     const data = await api(`/movies/search?q=${encodeURIComponent(q)}&page_size=20`);
     if (!data) return;
