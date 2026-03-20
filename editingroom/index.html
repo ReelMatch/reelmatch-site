@@ -2229,22 +2229,32 @@ function renderUsersTable(users, total) {
           <th class="sortable" onclick="setSortCol('username')">Username ${sortIcon('username')}</th>
           <th class="sortable" onclick="setSortCol('last_name')">Name ${sortIcon('last_name')}</th>
           <th class="sortable" onclick="setSortCol('email')">Email ${sortIcon('email')}</th>
-          <th class="sortable" onclick="setSortCol('role')">Role ${sortIcon('role')}</th>
           <th class="sortable" onclick="setSortCol('email_verified')">Verified ${sortIcon('email_verified')}</th>
           <th class="sortable" onclick="setSortCol('created_at')">Joined ${sortIcon('created_at')}</th>
+          <th class="sortable" style="text-align:right" onclick="setSortCol('ratings_count')">Ratings ${sortIcon('ratings_count')}</th>
+          <th class="sortable" style="text-align:right" onclick="setSortCol('reviews_count')">Reviews ${sortIcon('reviews_count')}</th>
         </tr></thead>
         <tbody>
           ${users.map(u => { _userAdminCache[u.username] = u;
             const suspended = u.is_active === false;
             const rowStyle = suspended ? 'cursor:pointer;background:rgba(255,182,193,0.10)' : 'cursor:pointer';
+            const roleMark = u.role === 'admin'
+              ? ' <span class="badge badge-admin" style="font-size:10px;padding:1px 5px;vertical-align:middle">admin</span>'
+              : u.role === 'moderator'
+                ? ' <span class="badge badge-mod" style="font-size:10px;padding:1px 5px;vertical-align:middle">mod</span>'
+                : '';
+            const suspBadge = suspended ? ' <span class="badge badge-suspended" style="font-size:10px;padding:1px 5px;vertical-align:middle">suspended</span>' : '';
+            const rc = u.ratings_count ?? 0;
+            const rv = u.reviews_count ?? 0;
             return `
             <tr data-uid="${u.id}" onclick="openUserPanel('${esc(u.username)}')" style="${rowStyle}">
-              <td><strong>${esc(u.username)}</strong>${suspended ? ' <span class="badge badge-suspended" style="font-size:10px;padding:1px 5px;vertical-align:middle">suspended</span>' : ''}</td>
+              <td><strong>${esc(u.username)}</strong>${roleMark}${suspBadge}</td>
               <td style="color:var(--text-muted)">${u.first_name || u.last_name ? esc([u.first_name, u.last_name].filter(Boolean).join(' ')) : '—'}</td>
               <td style="color:var(--text-muted)">${esc(u.email||'—')}</td>
-              <td>${roleBadge(u.role)}</td>
               <td>${u.email_verified === true ? '<span class="badge badge-verified">Yes</span>' : '<span class="badge badge-pending">No</span>'}</td>
               <td style="color:var(--text-muted);font-size:12px">${formatDate(u.created_at)}</td>
+              <td style="text-align:right;${rc === 0 ? 'color:var(--text-muted)' : ''}">${rc.toLocaleString()}</td>
+              <td style="text-align:right;${rv === 0 ? 'color:var(--text-muted)' : ''}">${rv.toLocaleString()}</td>
             </tr>
           `; }).join('')}
         </tbody>
