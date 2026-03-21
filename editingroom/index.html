@@ -3515,8 +3515,7 @@ function renderUserPanel(u) {
       <div class="panel-avatar">
         ${u.avatar_url ? `<img src="${esc(u.avatar_url)}" alt="" />` : initials}
       </div>
-      <div class="panel-username">${esc(u.display_name || u.username)}</div>
-      <div class="panel-meta" style="color:var(--text-muted)">@${esc(u.username)}</div>
+      <div class="panel-username">${esc(u.username)}</div>
       <div class="panel-meta">Joined ${joinDate}</div>
       ${isBannedPanel
         ? '<div class="panel-meta" style="color:#cc2222;margin-top:4px">⚠ This account has been permanently banned</div>'
