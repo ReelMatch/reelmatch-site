@@ -130,13 +130,32 @@
     const token = new URLSearchParams(window.location.search).get('token');
     const content = document.getElementById('content');
 
+    function openApp() {
+      const isAndroid = /android/i.test(navigator.userAgent);
+      if (isAndroid) {
+        // Android intent URL with package fallback
+        window.location = 'intent://home#Intent;scheme=reelmatch;package=live.reelmatch.app;end';
+      } else {
+        // iOS / other — custom URL scheme
+        window.location = 'reelmatch://home';
+      }
+      // If the scheme doesn't launch within 1.5s the app probably isn't installed
+      setTimeout(() => {
+        const fallback = document.getElementById('app-fallback');
+        if (fallback) fallback.style.display = 'block';
+      }, 1500);
+    }
+
     function showSuccess() {
       content.innerHTML = `
         <h2>Email Verified!</h2>
         <div class="msg msg-success">
           Welcome to ReelMatch. Your email has been confirmed and your account is active.
         </div>
-        <a class="btn-open" href="https://reelmatch.live">Open App</a>`;
+        <button class="btn-open" onclick="openApp()">Open App</button>
+        <p class="app-fallback" id="app-fallback">
+          App didn't open — you can open it manually from your home screen.
+        </p>`;
     }
 
     function showExpired() {
