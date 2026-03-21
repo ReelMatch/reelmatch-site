@@ -3979,6 +3979,50 @@ async function panelResetPassword() {
   } catch (e) { toast(e.message, 'error'); }
 }
 
+function openSetPasswordModal() {
+  if (!_panelUser) return;
+  const input = document.getElementById('set-password-input');
+  input.value = '';
+  input.type = 'password';
+  document.getElementById('set-password-eye').textContent = '👁';
+  document.getElementById('set-password-btn').disabled = true;
+  const overlay = document.getElementById('set-password-overlay');
+  overlay.style.display = 'flex';
+  setTimeout(() => input.focus(), 60);
+}
+
+function closeSetPasswordModal() {
+  document.getElementById('set-password-overlay').style.display = 'none';
+}
+
+function toggleSetPasswordVisibility() {
+  const input = document.getElementById('set-password-input');
+  const eye = document.getElementById('set-password-eye');
+  if (input.type === 'password') { input.type = 'text'; eye.textContent = '🙈'; }
+  else { input.type = 'password'; eye.textContent = '👁'; }
+}
+
+async function submitSetPassword() {
+  if (!_panelUser) return;
+  const password = document.getElementById('set-password-input').value.trim();
+  if (password.length < 8) return;
+  const btn = document.getElementById('set-password-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    await api(`/admin/users/${_panelUser.id}/password`, {
+      method: 'PUT',
+      body: JSON.stringify({ password }),
+    });
+    toast('Password updated successfully', 'success');
+    closeSetPasswordModal();
+  } catch (e) {
+    toast(`Failed: ${e.message}`, 'error');
+    btn.disabled = false;
+    btn.textContent = 'Set Password';
+  }
+}
+
 async function panelSuspend() {
   if (!_panelUser) return;
   const uid = _panelUser.id;
