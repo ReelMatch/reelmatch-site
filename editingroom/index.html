@@ -1479,6 +1479,39 @@
     </div>
 
     <!-- ── SETTINGS ───────────────────────────────────────────────── -->
+    <div class="section" id="sec-appdev">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">App Development</h1>
+          <div class="section-subtitle">Developer tools and feature flags</div>
+        </div>
+      </div>
+      <div class="settings-section">
+
+        <div class="settings-card">
+          <h3>Developer Tools</h3>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Dev Pill Visibility</div>
+              <div class="settings-row-value" style="font-size:12px;margin-top:3px;">Controls who sees the dev overlay pill in the mobile app</div>
+            </div>
+            <div class="seg-toggle" id="dev-pill-toggle">
+              <button data-value="all"          onclick="setDevPillOption('all')">All Users</button>
+              <button data-value="admins_only"  onclick="setDevPillOption('admins_only')">Admins Only</button>
+              <button data-value="off"          onclick="setDevPillOption('off')">Off</button>
+            </div>
+          </div>
+          <div class="settings-row" style="border-bottom:none;padding-bottom:0">
+            <div></div>
+            <button class="btn btn-primary btn-sm" id="dev-pill-save-btn" onclick="saveDevPillVisibility()">Save</button>
+          </div>
+        </div>
+
+        <p style="font-size:12px;color:var(--text-muted);margin-top:4px;">More developer settings coming soon.</p>
+
+      </div>
+    </div>
+
     <div class="section" id="sec-settings">
       <div class="section-header">
         <div>
