@@ -3629,7 +3629,7 @@ function renderUserPanel(u) {
             ['email', 'Email', u.email],
             ['role',  'Role',  u.role],
           ].map(([field, label, val]) => `
-            <div class="pf-row${!val ? ' pf-row--empty' : ''}">
+            <div class="pf-row">
               <div class="pf-label">${label}</div>
               <div class="pf-val-wrap" id="pf-${field}">
                 <span class="pf-val pf-editable${!val ? ' empty' : ''}" onclick="startFieldEdit('${field}')">${esc(val || '—')}</span>
