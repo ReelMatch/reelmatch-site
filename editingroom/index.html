@@ -679,6 +679,32 @@
     .theme-swatch.active .theme-swatch-circle { border-color: var(--text-primary); }
     .theme-swatch-name { font-size: 10px; color: var(--text-muted); text-align: center; }
 
+    /* ─── SEGMENTED TOGGLE (App Dev) ────────────────────────────────── */
+    .seg-toggle {
+      display: inline-flex;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .seg-toggle button {
+      padding: 7px 16px;
+      background: transparent;
+      color: var(--text-muted);
+      border: none;
+      border-right: 1px solid var(--border);
+      font-size: 13px;
+      font-weight: 500;
+      font-family: 'DM Sans', sans-serif;
+      transition: background .15s, color .15s;
+      white-space: nowrap;
+    }
+    .seg-toggle button:last-child { border-right: none; }
+    .seg-toggle button:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .seg-toggle button.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
     /* ─── LOADING SPINNER ────────────────────────────────────────────── */
     .loading {
       display: flex; align-items: center; justify-content: center;
