@@ -5215,6 +5215,45 @@ async function exportAnalyticsPDF() {
   const _orig = setAnalyticsRange;
   // subtitle updates are handled inline; no patch needed
 })();
+
+/* ─── APP DEV ─────────────────────────────────────────────────────────── */
+let _devPillValue = 'admins_only';
+
+function setDevPillOption(value) {
+  _devPillValue = value;
+  document.querySelectorAll('#dev-pill-toggle button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.value === value);
+  });
+}
+
+async function loadAppDev() {
+  try {
+    const data = await api('/admin/app-settings');
+    if (!data) return;
+    const v = data['dev_pill_visibility'] ?? 'admins_only';
+    setDevPillOption(v);
+  } catch (e) {
+    toast('Failed to load app settings: ' + e.message, 'error');
+  }
+}
+
+async function saveDevPillVisibility() {
+  const btn = document.getElementById('dev-pill-save-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    await api('/admin/app-settings/dev_pill_visibility', {
+      method: 'PUT',
+      body: JSON.stringify({ value: _devPillValue }),
+    });
+    toast('Dev pill visibility saved', 'success');
+  } catch (e) {
+    toast('Save failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save';
+  }
+}
 </script>
 </body>
 </html>
