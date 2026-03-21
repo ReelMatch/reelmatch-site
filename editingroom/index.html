@@ -951,23 +951,24 @@
     /* ─── INLINE FIELD EDITING ──────────────────────────────────────── */
     .pf-grid { display: flex; flex-direction: column; }
     .pf-row {
-      display: flex; align-items: flex-start;
-      padding: 10px 0; border-bottom: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: 100px 1fr;
+      align-items: center;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--border);
+      min-height: 0;
     }
     .pf-row:last-child { border-bottom: none; }
-    .pf-row--empty {
-      align-items: center;
-      padding: 5px 0;
-    }
-    .pf-row--empty .pf-label { padding-top: 0; }
-    .pf-row--empty .pf-val-wrap { align-items: center; }
+    /* When a row has multi-line content (e.g. bio with text), align label to top */
+    .pf-row.pf-row--multiline { align-items: start; padding: 10px 0; }
     .pf-label {
-      width: 100px; flex-shrink: 0; padding-top: 2px;
       font-size: 11px; font-weight: 600; color: var(--text-muted);
       text-transform: uppercase; letter-spacing: .5px;
+      padding-right: 8px;
     }
-    .pf-val-wrap { flex: 1; display: flex; align-items: flex-start; gap: 6px; min-width: 0; }
-    .pf-val { flex: 1; font-size: 13px; word-break: break-word; min-width: 0; color: var(--text-primary); }
+    .pf-val-wrap { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .pf-row.pf-row--multiline .pf-val-wrap { align-items: flex-start; padding-top: 2px; }
+    .pf-val { flex: 1; font-size: 13px; word-break: break-word; min-width: 0; color: var(--text-primary); line-height: 1.45; }
     .pf-val.empty { color: var(--text-muted); font-style: italic; }
     .pf-edit-btn {
       opacity: 0; background: none; border: none; color: var(--text-muted);
