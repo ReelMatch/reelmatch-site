@@ -3228,7 +3228,7 @@ async function renderMoviesTable(movies) {
           ${movies.map(m => {
             const key = String(m.tmdb_id || m.id || '');
             const rm = rmStats[key];
-            const rmCell = rm ? `<span style="color:var(--accent)">★</span> ${rm.avg.toFixed(1)} <span style="color:var(--text-muted);font-size:11px">(${rm.count})</span>` : '—';
+            const rmCell = rm ? `${rm.avg.toFixed(1)} <span style="color:var(--accent)">★</span> <span style="color:var(--text-muted);font-size:11px">(${rm.count})</span>` : '—';
             return `
             <tr style="height:64px">
               <td style="padding-top:0;padding-bottom:0">
