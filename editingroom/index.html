@@ -4479,7 +4479,6 @@ async function _loadFollowersPanel(u, el) {
       ${f.avatar_url ? `<img class="sub-avatar" src="${esc(f.avatar_url)}" alt="">` : `<div class="sub-avatar">${initials}</div>`}
       <div class="sub-item-info">
         <div class="sub-item-title">@${esc(f.username)}</div>
-        ${f.display_name ? `<div class="sub-item-meta">${esc(f.display_name)}</div>` : ''}
         <div class="sub-item-meta">${formatDate(f.followed_at || f.created_at)}</div>
       </div>
     </div>`;
