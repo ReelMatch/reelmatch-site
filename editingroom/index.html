@@ -3636,7 +3636,7 @@ function renderUserPanel(u) {
                 <button class="pf-edit-btn" onclick="startFieldEdit('${field}')" title="Edit ${label}">✎</button>
               </div>
             </div>`).join('')}
-          <div class="pf-row${!u.birthdate ? ' pf-row--empty' : ''}">
+          <div class="pf-row">
             <div class="pf-label">Birthdate</div>
             <div class="pf-val-wrap" id="pf-birthdate">
               ${(() => {
