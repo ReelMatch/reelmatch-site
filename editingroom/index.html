@@ -2485,7 +2485,7 @@ function renderUsersTable(users, total) {
             const rv = u.reviews_count ?? 0;
             return `
             <tr data-uid="${u.id}" onclick="openUserPanel('${esc(u.username)}')" style="${rowStyle}">
-              <td><strong>${esc(u.username)}</strong>${roleMark}${suspBadge}</td>
+              <td><span style="display:inline-flex;align-items:center;gap:8px">${u.avatar_url ? `<img src="${esc(u.avatar_url)}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;vertical-align:middle" alt="">` : `<span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--bg-hover);color:var(--text-muted);font-size:11px;font-weight:600;flex-shrink:0">${esc((u.first_name||u.username||'?')[0].toUpperCase())}</span>`}<strong>${esc(u.username)}</strong>${roleMark}${suspBadge}</span></td>
               <td style="color:var(--text-muted)">${u.first_name || u.last_name ? esc([u.first_name, u.last_name].filter(Boolean).join(' ')) : '—'}</td>
               <td style="color:var(--text-muted)">${esc(u.email||'—')}</td>
               <td>${u.email_verified === true ? '<span class="badge badge-verified">Yes</span>' : '<span class="badge badge-pending">No</span>'}</td>
