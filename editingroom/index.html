@@ -1423,6 +1423,23 @@
           <div class="skeleton-box"></div><div class="skeleton-box"></div>
         </div>
       </div>
+
+      <!-- Recommendations refresh — lives outside dashboard-body so it survives reloads -->
+      <div class="recs-refresh-card">
+        <div class="recs-refresh-row">
+          <div>
+            <div class="stat-label">Recommendations Engine</div>
+            <div class="stat-sublabel" style="margin-top:2px">Regenerate predictions for all active users</div>
+          </div>
+          <button class="btn btn-primary btn-sm" id="recs-refresh-btn" onclick="startRecsRefresh()">⟳ Refresh All</button>
+        </div>
+        <div id="recs-refresh-progress" style="display:none">
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" id="recs-progress-fill"></div>
+          </div>
+          <div class="recs-refresh-msg" id="recs-refresh-msg"></div>
+        </div>
+      </div>
     </div>
 
     <!-- ── USERS ──────────────────────────────────────────────────── -->
