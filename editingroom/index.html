@@ -4547,6 +4547,42 @@ async function panelBan() {
   }, 50);
 }
 
+/* ─── CLEAR RATINGS / REVIEWS ───────────────────────────────────────── */
+
+async function panelClearRatings() {
+  if (!_panelUser) return;
+  const uname = _panelUser.username;
+  showConfirm(
+    `Clear All Ratings for @${uname}`,
+    `This will permanently delete every rating @${uname} has made. This cannot be undone.`,
+    async () => {
+      try {
+        const res = await api(`/admin/users/${_panelUser.id}/ratings`, { method: 'DELETE' });
+        toast(res.message || `Ratings cleared for ${uname}`, 'success');
+      } catch (e) {
+        toast(`Failed: ${e.message}`, 'error');
+      }
+    }
+  );
+}
+
+async function panelClearReviews() {
+  if (!_panelUser) return;
+  const uname = _panelUser.username;
+  showConfirm(
+    `Clear All Reviews for @${uname}`,
+    `This will permanently delete every review @${uname} has written. This cannot be undone.`,
+    async () => {
+      try {
+        const res = await api(`/admin/users/${_panelUser.id}/reviews`, { method: 'DELETE' });
+        toast(res.message || `Reviews cleared for ${uname}`, 'success');
+      } catch (e) {
+        toast(`Failed: ${e.message}`, 'error');
+      }
+    }
+  );
+}
+
 /* ─── BANNED USERS SECTION ───────────────────────────────────────────── */
 
 let _bannedPage = 1;
