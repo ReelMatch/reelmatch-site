@@ -3822,6 +3822,11 @@ function startFieldEdit(field) {
     inputHtml = `<select class="pf-input" id="pf-input-${field}">
       ${roles.map(r => `<option value="${r}"${currentVal===r?' selected':''}>${r}</option>`).join('')}
     </select>`;
+  } else if (field === 'theme_preference') {
+    const themes = ['system', 'dark', 'light'];
+    inputHtml = `<select class="pf-input" id="pf-input-${field}">
+      ${themes.map(t => `<option value="${t}"${currentVal===t?' selected':''}>${t.charAt(0).toUpperCase()+t.slice(1)}</option>`).join('')}
+    </select>`;
   } else if (field === 'bio') {
     inputHtml = `<textarea class="pf-input" id="pf-input-${field}" rows="3">${esc(currentVal)}</textarea>`;
   } else if (field === 'pronouns') {
