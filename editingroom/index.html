@@ -4004,19 +4004,23 @@ function toggleSetPasswordVisibility() {
 
 async function submitSetPassword() {
   if (!_panelUser) return;
+  const uid = _panelUser.id;
+  if (!uid) { toast('No user selected', 'error'); return; }
   const password = document.getElementById('set-password-input').value.trim();
   if (password.length < 8) return;
   const btn = document.getElementById('set-password-btn');
   btn.disabled = true;
   btn.textContent = 'Saving…';
+  console.log(`[SetPassword] PUT /admin/users/${uid}/password`);
   try {
-    await api(`/admin/users/${_panelUser.id}/password`, {
+    await api(`/admin/users/${uid}/password`, {
       method: 'PUT',
       body: JSON.stringify({ password }),
     });
     toast('Password updated successfully', 'success');
     closeSetPasswordModal();
   } catch (e) {
+    console.error('[SetPassword] error:', e.message);
     toast(`Failed: ${e.message}`, 'error');
     btn.disabled = false;
     btn.textContent = 'Set Password';
