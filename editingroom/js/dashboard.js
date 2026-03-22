@@ -197,7 +197,7 @@ async function startRecsRefresh() {
     msg.textContent = 'Processing…';
 
     let _lastProcessed = -1;
-    let _lastErrors = 0;
+    let _lastResults = 0;
 
     if (_recsRefreshTimer) clearInterval(_recsRefreshTimer);
     _recsRefreshTimer = setInterval(async () => {
@@ -205,25 +205,31 @@ async function startRecsRefresh() {
         const s = await api(`/admin/recommendations/refresh-status/${job_id}`);
         if (!s) return;
 
-        // Log progress when processed count changes
+        // Update progress bar when processed count changes
         if (s.processed !== _lastProcessed) {
           const pct = s.total > 0 ? Math.round((s.processed / s.total) * 100) : 0;
           fill.style.width = `${pct}%`;
           msg.textContent = `Processing ${s.processed} / ${s.total} users…`;
-          if (s.total > 0) {
-            recLogTs(`Processing ${s.processed} / ${s.total} users  (${pct}%)`, 'progress');
-          }
           _lastProcessed = s.processed;
         }
 
-        // Log any new per-user errors
-        if (s.errors && s.errors.length > _lastErrors) {
-          for (let i = _lastErrors; i < s.errors.length; i++) {
-            const err = s.errors[i];
-            const uid = err.user_id ? ` [user: ${String(err.user_id).slice(0, 8)}…]` : '';
-            recLogTs(`✗ FAIL${uid}: ${err.error || JSON.stringify(err)}`, 'error');
+        // Log new per-user results as they arrive
+        if (s.results && s.results.length > _lastResults) {
+          for (let i = _lastResults; i < s.results.length; i++) {
+            const r = s.results[i];
+            console.log('───────────────────────────────────────'); // DEBUG
+            console.log('[RecConsole] ▶ USER RESULT RECEIVED'); // DEBUG
+            console.log('[RecConsole] username:', r.username, 'status:', r.status); // DEBUG
+            console.log('[RecConsole] recs_stored:', r.recs_stored, 'neighbors:', r.neighbor_count); // DEBUG
+            console.log('[RecConsole] neighbor_recs:', r.neighbor_recs, 'genre_affinity_recs:', r.genre_affinity_recs); // DEBUG
+            console.log('───────────────────────────────────────'); // DEBUG
+            if (r.status === 'ok') {
+              recLogTs(`✓ ${r.username} — ${r.recs_stored} recs (${r.neighbor_recs} neighbor, ${r.genre_affinity_recs} genre affinity, ${r.neighbor_count} neighbors found)`, 'ok');
+            } else {
+              recLogTs(`✗ ${r.username} — ERROR: ${r.error}`, 'error');
+            }
           }
-          _lastErrors = s.errors.length;
+          _lastResults = s.results.length;
         }
 
         if (s.status === 'complete') {
@@ -234,8 +240,9 @@ async function startRecsRefresh() {
           msg.textContent = `✓ Refreshed recommendations for ${s.processed} users`;
           recLog('───────────────────────────────────────', 'header');
           recLogTs(`✓ Complete — processed ${s.processed} user${s.processed !== 1 ? 's' : ''}`, 'ok');
-          if (s.errors && s.errors.length > 0) {
-            recLogTs(`✗ ${s.errors.length} user${s.errors.length !== 1 ? 's' : ''} failed`, 'error');
+          const errorCount = s.errors ? s.errors.length : 0;
+          if (errorCount > 0) {
+            recLogTs(`✗ ${errorCount} user${errorCount !== 1 ? 's' : ''} failed`, 'error');
           } else {
             recLogTs('○ No errors', 'info');
           }
