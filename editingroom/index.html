@@ -2309,6 +2309,54 @@ async function loadDashboard() {
 /* ─── RECOMMENDATIONS REFRESH ────────────────────────────────────────── */
 let _recsRefreshTimer = null;
 
+/* Log console helpers */
+function _logTs() {
+  const n = new Date();
+  return [n.getHours(), n.getMinutes(), n.getSeconds()]
+    .map(v => String(v).padStart(2, '0')).join(':');
+}
+
+function recLog(text, type = 'info') {
+  const cons = document.getElementById('recs-log-console');
+  const body = document.getElementById('recs-log-body');
+  if (!body) return;
+  cons.style.display = 'block';
+  const line = document.createElement('div');
+  line.className = `rec-log-line ${type}`;
+  line.textContent = text;
+  body.appendChild(line);
+  body.scrollTop = body.scrollHeight;
+}
+
+function recLogTs(text, type = 'info') {
+  recLog(`[${_logTs()}] ${text}`, type);
+}
+
+function clearRecLog() {
+  const body = document.getElementById('recs-log-body');
+  if (body) body.innerHTML = '';
+}
+
+function closeRecLog() {
+  document.getElementById('recs-log-console').style.display = 'none';
+}
+
+async function copyRecLog() {
+  const body = document.getElementById('recs-log-body');
+  const btn  = document.getElementById('recs-log-copy-btn');
+  if (!body || !btn) return;
+  const text = Array.from(body.querySelectorAll('.rec-log-line'))
+    .map(el => el.textContent).join('\n');
+  try {
+    await navigator.clipboard.writeText(text);
+    btn.textContent = '✓ Copied';
+    setTimeout(() => { btn.textContent = '📋'; }, 1800);
+  } catch {
+    btn.textContent = '✗';
+    setTimeout(() => { btn.textContent = '📋'; }, 1800);
+  }
+}
+
 async function startRecsRefresh() {
   const btn      = document.getElementById('recs-refresh-btn');
   const progress = document.getElementById('recs-refresh-progress');
@@ -2321,23 +2369,53 @@ async function startRecsRefresh() {
   msg.style.color = 'var(--text-muted)';
   msg.textContent = 'Starting…';
 
+  clearRecLog();
+  recLog('═══════════════════════════════════════', 'header');
+  recLog(`  REC ENGINE REFRESH — ${new Date().toLocaleString()}`, 'header');
+  recLog('═══════════════════════════════════════', 'header');
+  recLogTs('▶ Sending refresh request to server…', 'info');
+
   try {
     const data = await api('/admin/recommendations/refresh-all', { method: 'POST' });
-    if (!data) { btn.disabled = false; return; }
-    const { job_id, total } = data;
-    console.log(`[RecsRefresh] Job started — job_id=${job_id}, total=${total}`);
-    msg.textContent = `Processing 0 / ${total} users…`;
+    if (!data) {
+      btn.disabled = false;
+      recLogTs('✗ No response from server', 'error');
+      return;
+    }
+    const { job_id } = data;
+    recLogTs(`✓ Job queued  (id: ${job_id})`, 'ok');
+    recLogTs('○ Waiting for worker to start…', 'info');
+    msg.textContent = 'Processing…';
+
+    let _lastProcessed = -1;
+    let _lastErrors = 0;
 
     if (_recsRefreshTimer) clearInterval(_recsRefreshTimer);
     _recsRefreshTimer = setInterval(async () => {
       try {
         const s = await api(`/admin/recommendations/refresh-status/${job_id}`);
         if (!s) return;
-        console.log(`[RecsRefresh] Poll — status=${s.status}, processed=${s.processed}/${s.total}, errors=${s.errors.length}`);
 
-        const pct = s.total > 0 ? Math.round((s.processed / s.total) * 100) : 0;
-        fill.style.width = `${pct}%`;
-        msg.textContent = `Processing ${s.processed} / ${s.total} users…`;
+        // Log progress when processed count changes
+        if (s.processed !== _lastProcessed) {
+          const pct = s.total > 0 ? Math.round((s.processed / s.total) * 100) : 0;
+          fill.style.width = `${pct}%`;
+          msg.textContent = `Processing ${s.processed} / ${s.total} users…`;
+          if (s.total > 0) {
+            recLogTs(`Processing ${s.processed} / ${s.total} users  (${pct}%)`, 'progress');
+          }
+          _lastProcessed = s.processed;
+        }
+
+        // Log any new per-user errors
+        if (s.errors && s.errors.length > _lastErrors) {
+          for (let i = _lastErrors; i < s.errors.length; i++) {
+            const err = s.errors[i];
+            const uid = err.user_id ? ` [user: ${String(err.user_id).slice(0, 8)}…]` : '';
+            recLogTs(`✗ FAIL${uid}: ${err.error || JSON.stringify(err)}`, 'error');
+          }
+          _lastErrors = s.errors.length;
+        }
 
         if (s.status === 'complete') {
           clearInterval(_recsRefreshTimer);
@@ -2345,24 +2423,34 @@ async function startRecsRefresh() {
           fill.style.width = '100%';
           msg.style.color = '#81c784';
           msg.textContent = `✓ Refreshed recommendations for ${s.processed} users`;
-          console.log(`[RecsRefresh] Complete — processed=${s.processed}, errors=${s.errors.length}`);
+          recLog('───────────────────────────────────────', 'header');
+          recLogTs(`✓ Complete — processed ${s.processed} user${s.processed !== 1 ? 's' : ''}`, 'ok');
+          if (s.errors && s.errors.length > 0) {
+            recLogTs(`✗ ${s.errors.length} user${s.errors.length !== 1 ? 's' : ''} failed`, 'error');
+          } else {
+            recLogTs('○ No errors', 'info');
+          }
+          recLog('───────────────────────────────────────', 'header');
           btn.disabled = false;
+
         } else if (s.status === 'error') {
           clearInterval(_recsRefreshTimer);
           _recsRefreshTimer = null;
           msg.style.color = '#e57373';
           msg.textContent = `✗ Error: ${s.errors[0]?.error || 'Unknown error'}`;
-          console.log(`[RecsRefresh] Error — ${JSON.stringify(s.errors)}`);
+          recLog('───────────────────────────────────────', 'header');
+          recLogTs(`✗ Job failed: ${s.errors[0]?.error || 'Unknown error'}`, 'error');
+          recLog('───────────────────────────────────────', 'header');
           btn.disabled = false;
         }
       } catch (e) {
-        console.error('[RecsRefresh] Poll error:', e);
+        recLogTs(`✗ Poll error: ${e.message}`, 'error');
       }
     }, 1000);
   } catch (e) {
     msg.style.color = '#e57373';
     msg.textContent = `✗ Failed to start: ${e.message}`;
-    console.error('[RecsRefresh] Failed to start job:', e);
+    recLogTs(`✗ Failed to start job: ${e.message}`, 'error');
     btn.disabled = false;
   }
 }
