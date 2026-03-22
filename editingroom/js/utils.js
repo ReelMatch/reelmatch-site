@@ -4,8 +4,27 @@
 
 /* ─── CONFIGURATION ─────────────────────────────────────────────────── */
 const API_BASE     = 'https://web-production-d11a6.up.railway.app';
-const BUILD_VERSION = '0.1.2';
-const BUILD_DATE    = '2026-03-20 06:00 UTC';
+const BUILD_VERSION = '0.1.3';
+const BUILD_DATE    = '2026-03-22';
+
+const CHANGELOG = [
+  { version: 'v0.1.3', date: '2026-03-22', changes: [
+    'Clean-slate recommendation engine with pre-computation',
+    'Genre affinity backfill for movies with no neighbor coverage',
+    'Editing Room split into separate CSS/JS files',
+    'Rec engine console log window with copy button',
+    'Pull-to-refresh on all app screens',
+    'Rate tab navigates to movie detail instead of drawer',
+    'False rating save error toast fixed',
+  ]},
+  { version: 'v0.1.2', date: '2026-03-20', changes: [
+    'Bulk recommendations refresh with real-time progress bar',
+    'Predicted ratings in Rate tab drawer',
+    'For You page with 25 recs and Suggest More',
+    'Ratings count accuracy fixes (1272 now shows correctly)',
+    'Seed ratings toggle in analytics',
+  ]},
+];
 
 /* ─── THEMES ─────────────────────────────────────────────────────────── */
 const THEMES = [

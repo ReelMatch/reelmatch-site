@@ -87,6 +87,23 @@ async function loadDashboard() {
         <div class="stat-label" style="margin-bottom:4px">Build</div>
         <div class="stat-number" style="font-size:1.4rem">v${BUILD_VERSION}</div>
         <div class="stat-sublabel">${BUILD_DATE}</div>
+        ${(() => {
+          const cur = CHANGELOG[0];
+          const older = CHANGELOG.slice(1);
+          return `<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+            <div style="font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:0.6px;margin-bottom:8px;text-transform:uppercase">Changelog</div>
+            <div style="font-size:12px;font-weight:600;color:var(--text-primary);margin-bottom:4px">${esc(cur.version)} — ${esc(cur.date)}</div>
+            <ul style="margin:0 0 0 0;padding-left:14px;font-size:12px;color:var(--text-primary);line-height:1.9">
+              ${cur.changes.map(c => `<li>${esc(c)}</li>`).join('')}
+            </ul>
+            ${older.map(v => `
+              <div style="margin-top:10px;font-size:11px;font-weight:600;color:var(--text-muted)">${esc(v.version)} — ${esc(v.date)}</div>
+              <ul style="margin:0;padding-left:14px;font-size:11px;color:var(--text-muted);line-height:1.9">
+                ${v.changes.map(c => `<li>${esc(c)}</li>`).join('')}
+              </ul>
+            `).join('')}
+          </div>`;
+        })()}
       </div>
     </div>
   `;
