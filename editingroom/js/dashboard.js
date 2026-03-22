@@ -1,0 +1,310 @@
+// ═══════════════════════════════════════════════════════
+// ReelMatch Editing Room — dashboard.js
+// ═══════════════════════════════════════════════════════
+console.log('[Dashboard] ▶ INITIALIZED'); // DEBUG
+
+/* ─── DASHBOARD ──────────────────────────────────────────────────────── */
+let _dashInterval = null;
+
+async function loadDashboard() {
+  const body = document.getElementById('dashboard-body');
+
+  // Show skeleton on first load (no real content yet)
+  if (!body.querySelector('.stats-grid')) {
+    body.innerHTML = skeletonHTML();
+  }
+
+  let s;
+  try {
+    s = await api('/admin/stats');
+    if (!s) return;
+  } catch (e) {
+    body.innerHTML = `<div class="error-card">⚠ Failed to load stats: ${esc(e.message)}</div>`;
+    document.getElementById('health-dot').classList.add('hidden');
+    return;
+  }
+
+  document.getElementById('health-dot').classList.remove('hidden');
+  document.getElementById('dash-updated').textContent =
+    'Updated ' + new Date().toLocaleTimeString();
+
+  const pending = s.pending_reports || 0;
+  const li = s.last_import;
+
+  body.innerHTML = `
+    <!-- Row 1: 4 large cards -->
+    <div class="stats-grid">
+      ${bigCard('Total Users',    s.total_users,    'registered accounts',   false,        'users-all')}
+      ${bigCard('Total Ratings',  s.total_ratings,  'user film ratings',     false,        'ratings-all')}
+      ${bigCard('Movies Cached',  s.movies_cached,  'in Supabase catalogue', false,        '')}
+      ${bigCard('Pending Reports', pending,          'awaiting moderation',   pending > 0, 'reports')}
+    </div>
+
+    <!-- Row 2: 4 medium cards -->
+    <div class="stats-grid-2">
+      ${medCard('New Users Today',       s.new_users_today,    'joined since midnight', 'users-today')}
+      ${medCard('Ratings Today',         s.ratings_today,      'ratings logged today',  'ratings-today')}
+      ${medCard('Active Group Sessions', s.active_sessions,    'sessions in progress',  'groups-active')}
+      ${medCard('Achievements Earned',   s.achievements_earned,'total unlocked',        'users-all')}
+    </div>
+
+    <!-- Row 3: 2 wide cards -->
+    <div class="stats-grid-wide">
+      <div class="wide-card">
+        <h3>Seed Data</h3>
+        <div class="mini-stats">
+          ${miniStat(s.seed_ratings,          'Seed Ratings')}
+          ${miniStat(s.movies_with_streaming, 'With Streaming')}
+          ${miniStat(s.average_rating,        'Avg User Rating')}
+        </div>
+      </div>
+      <div class="wide-card">
+        <h3>Social Graph</h3>
+        <div class="mini-stats">
+          ${miniStat(s.total_follows,      'Follows')}
+          ${miniStat(s.total_friendships,  'Friendships')}
+          ${miniStat(s.total_reviews,      'Reviews')}
+          ${miniStat(s.total_groups,       'Groups')}
+        </div>
+      </div>
+    </div>
+
+    <!-- Last import -->
+    <div class="import-card">
+      <div>
+        <h3>Last Import Job</h3>
+        ${li
+          ? `<div class="import-detail">${esc(li.source)} &mdash; <strong>${esc(li.status)}</strong> &mdash; ${(li.processed_records||0).toLocaleString()} records</div>
+             <div class="import-meta">${formatDate(li.created_at)}</div>`
+          : `<div class="import-meta">No import jobs found</div>`}
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="navigate('settings')">Import Status ↗</button>
+    </div>
+
+    <!-- Build info -->
+    <div class="stats-grid" style="margin-top:0;grid-template-columns:1fr">
+      <div class="stat-card" style="padding:16px 18px">
+        <div class="stat-label" style="margin-bottom:4px">Build</div>
+        <div class="stat-number" style="font-size:1.4rem">v${BUILD_VERSION}</div>
+        <div class="stat-sublabel">${BUILD_DATE}</div>
+      </div>
+    </div>
+  `;
+
+  // Animate numbers counting up — only once per session
+  if (!sessionStorage.getItem('stats_animated')) {
+    body.querySelectorAll('[data-count]').forEach(el => countUp(el));
+    sessionStorage.setItem('stats_animated', '1');
+  }
+}
+
+/* ─── RECOMMENDATIONS REFRESH ────────────────────────────────────────── */
+let _recsRefreshTimer = null;
+
+/* Log console helpers */
+function _logTs() {
+  const n = new Date();
+  return [n.getHours(), n.getMinutes(), n.getSeconds()]
+    .map(v => String(v).padStart(2, '0')).join(':');
+}
+
+function recLog(text, type = 'info') {
+  const cons = document.getElementById('recs-log-console');
+  const body = document.getElementById('recs-log-body');
+  if (!body) return;
+  cons.style.display = 'block';
+  const line = document.createElement('div');
+  line.className = `rec-log-line ${type}`;
+  line.textContent = text;
+  body.appendChild(line);
+  body.scrollTop = body.scrollHeight;
+}
+
+function recLogTs(text, type = 'info') {
+  recLog(`[${_logTs()}] ${text}`, type);
+}
+
+function clearRecLog() {
+  const body = document.getElementById('recs-log-body');
+  if (body) body.innerHTML = '';
+}
+
+function closeRecLog() {
+  document.getElementById('recs-log-console').style.display = 'none';
+}
+
+async function copyRecLog() {
+  const body = document.getElementById('recs-log-body');
+  const btn  = document.getElementById('recs-log-copy-btn');
+  if (!body || !btn) return;
+  const text = Array.from(body.querySelectorAll('.rec-log-line'))
+    .map(el => el.textContent).join('\n');
+  try {
+    await navigator.clipboard.writeText(text);
+    btn.textContent = '✓ Copied';
+    setTimeout(() => { btn.textContent = '📋'; }, 1800);
+  } catch {
+    btn.textContent = '✗';
+    setTimeout(() => { btn.textContent = '📋'; }, 1800);
+  }
+}
+
+async function startRecsRefresh() {
+  const btn      = document.getElementById('recs-refresh-btn');
+  const progress = document.getElementById('recs-refresh-progress');
+  const fill     = document.getElementById('recs-progress-fill');
+  const msg      = document.getElementById('recs-refresh-msg');
+
+  btn.disabled = true;
+  progress.style.display = 'block';
+  fill.style.width = '0%';
+  msg.style.color = 'var(--text-muted)';
+  msg.textContent = 'Starting…';
+
+  clearRecLog();
+  recLog('═══════════════════════════════════════', 'header');
+  recLog(`  REC ENGINE REFRESH — ${new Date().toLocaleString()}`, 'header');
+  recLog('═══════════════════════════════════════', 'header');
+  recLogTs('▶ Sending refresh request to server…', 'info');
+
+  try {
+    const data = await api('/admin/recommendations/refresh-all', { method: 'POST' });
+    if (!data) {
+      btn.disabled = false;
+      recLogTs('✗ No response from server', 'error');
+      return;
+    }
+    const { job_id } = data;
+    recLogTs(`✓ Job queued  (id: ${job_id})`, 'ok');
+    recLogTs('○ Waiting for worker to start…', 'info');
+    msg.textContent = 'Processing…';
+
+    let _lastProcessed = -1;
+    let _lastErrors = 0;
+
+    if (_recsRefreshTimer) clearInterval(_recsRefreshTimer);
+    _recsRefreshTimer = setInterval(async () => {
+      try {
+        const s = await api(`/admin/recommendations/refresh-status/${job_id}`);
+        if (!s) return;
+
+        // Log progress when processed count changes
+        if (s.processed !== _lastProcessed) {
+          const pct = s.total > 0 ? Math.round((s.processed / s.total) * 100) : 0;
+          fill.style.width = `${pct}%`;
+          msg.textContent = `Processing ${s.processed} / ${s.total} users…`;
+          if (s.total > 0) {
+            recLogTs(`Processing ${s.processed} / ${s.total} users  (${pct}%)`, 'progress');
+          }
+          _lastProcessed = s.processed;
+        }
+
+        // Log any new per-user errors
+        if (s.errors && s.errors.length > _lastErrors) {
+          for (let i = _lastErrors; i < s.errors.length; i++) {
+            const err = s.errors[i];
+            const uid = err.user_id ? ` [user: ${String(err.user_id).slice(0, 8)}…]` : '';
+            recLogTs(`✗ FAIL${uid}: ${err.error || JSON.stringify(err)}`, 'error');
+          }
+          _lastErrors = s.errors.length;
+        }
+
+        if (s.status === 'complete') {
+          clearInterval(_recsRefreshTimer);
+          _recsRefreshTimer = null;
+          fill.style.width = '100%';
+          msg.style.color = '#81c784';
+          msg.textContent = `✓ Refreshed recommendations for ${s.processed} users`;
+          recLog('───────────────────────────────────────', 'header');
+          recLogTs(`✓ Complete — processed ${s.processed} user${s.processed !== 1 ? 's' : ''}`, 'ok');
+          if (s.errors && s.errors.length > 0) {
+            recLogTs(`✗ ${s.errors.length} user${s.errors.length !== 1 ? 's' : ''} failed`, 'error');
+          } else {
+            recLogTs('○ No errors', 'info');
+          }
+          recLog('───────────────────────────────────────', 'header');
+          btn.disabled = false;
+
+        } else if (s.status === 'error') {
+          clearInterval(_recsRefreshTimer);
+          _recsRefreshTimer = null;
+          msg.style.color = '#e57373';
+          msg.textContent = `✗ Error: ${s.errors[0]?.error || 'Unknown error'}`;
+          recLog('───────────────────────────────────────', 'header');
+          recLogTs(`✗ Job failed: ${s.errors[0]?.error || 'Unknown error'}`, 'error');
+          recLog('───────────────────────────────────────', 'header');
+          btn.disabled = false;
+        }
+      } catch (e) {
+        recLogTs(`✗ Poll error: ${e.message}`, 'error');
+      }
+    }, 1000);
+  } catch (e) {
+    msg.style.color = '#e57373';
+    msg.textContent = `✗ Failed to start: ${e.message}`;
+    recLogTs(`✗ Failed to start job: ${e.message}`, 'error');
+    btn.disabled = false;
+  }
+}
+
+function skeletonHTML() {
+  const row = n => `<div class="skeleton-grid">${'<div class="skeleton-box"></div>'.repeat(n)}</div>`;
+  return row(4) + row(4) + `<div class="skeleton-grid" style="grid-template-columns:1fr 1fr">${'<div class="skeleton-box" style="height:110px"></div>'.repeat(2)}</div>`;
+}
+
+function bigCard(label, value, sublabel, isDanger = false, action = '') {
+  const n = Number(value);
+  const display = isNaN(n) ? value : n.toLocaleString();
+  const actionAttr = action ? ` data-action="${action}" onclick="handleCardClick('${action}')"` : '';
+  return `
+    <div class="stat-card${isDanger ? ' danger' : ''}"${actionAttr}>
+      <div class="stat-number" data-count="${isNaN(n)?'':n}">${isDanger ? '⚠ ' : ''}${display}</div>
+      <div class="stat-label">${label}</div>
+      <div class="stat-sublabel">${sublabel}</div>
+    </div>`;
+}
+
+function medCard(label, value, sublabel, action = '') {
+  const n = Number(value);
+  const display = isNaN(n) ? value : n.toLocaleString();
+  const actionAttr = action ? ` data-action="${action}" onclick="handleCardClick('${action}')"` : '';
+  return `
+    <div class="stat-card"${actionAttr}>
+      <div class="stat-number sm" data-count="${isNaN(n)?'':n}">${display}</div>
+      <div class="stat-label">${label}</div>
+      <div class="stat-sublabel">${sublabel}</div>
+    </div>`;
+}
+
+function miniStat(value, label) {
+  const n = Number(value);
+  const display = isNaN(n) ? value : n.toLocaleString();
+  return `
+    <div class="mini-stat">
+      <div class="mini-stat-number" data-count="${isNaN(n)?'':n}">${display}</div>
+      <div class="mini-stat-label">${label}</div>
+    </div>`;
+}
+
+function countUp(el) {
+  const target = parseInt(el.dataset.count, 10);
+  if (isNaN(target) || target === 0) return;
+  const duration = 600;
+  const start = performance.now();
+  const prefix = el.textContent.startsWith('⚠') ? '⚠ ' : '';
+  function step(now) {
+    const p = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    el.textContent = prefix + Math.round(target * ease).toLocaleString();
+    if (p < 1) requestAnimationFrame(step);
+    else el.textContent = prefix + target.toLocaleString();
+  }
+  requestAnimationFrame(step);
+}
+
+function startDashAutoRefresh() {
+  if (_dashInterval) clearInterval(_dashInterval);
+  _dashInterval = setInterval(() => {
+    if (state.section === 'dashboard') loadDashboard();
+  }, 30000);
+}
