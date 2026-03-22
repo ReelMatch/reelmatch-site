@@ -1489,6 +1489,17 @@
           </div>
           <div class="recs-refresh-msg" id="recs-refresh-msg"></div>
         </div>
+        <!-- Rec engine log console -->
+        <div id="recs-log-console" class="rec-log-console" style="display:none">
+          <div class="rec-log-header">
+            <span>Rec Engine Log</span>
+            <div class="rec-log-actions">
+              <button id="recs-log-copy-btn" class="rec-log-btn" onclick="copyRecLog()" title="Copy log">📋</button>
+              <button class="rec-log-btn" onclick="closeRecLog()" title="Close">×</button>
+            </div>
+          </div>
+          <div class="rec-log-body" id="recs-log-body"></div>
+        </div>
       </div>
     </div>
 
