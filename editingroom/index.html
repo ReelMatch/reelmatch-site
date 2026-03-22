@@ -2245,6 +2245,67 @@ async function loadDashboard() {
   }
 }
 
+/* ─── RECOMMENDATIONS REFRESH ────────────────────────────────────────── */
+let _recsRefreshTimer = null;
+
+async function startRecsRefresh() {
+  const btn      = document.getElementById('recs-refresh-btn');
+  const progress = document.getElementById('recs-refresh-progress');
+  const fill     = document.getElementById('recs-progress-fill');
+  const msg      = document.getElementById('recs-refresh-msg');
+
+  btn.disabled = true;
+  progress.style.display = 'block';
+  fill.style.width = '0%';
+  msg.style.color = 'var(--text-muted)';
+  msg.textContent = 'Starting…';
+
+  try {
+    const data = await api('/admin/recommendations/refresh-all', { method: 'POST' });
+    if (!data) { btn.disabled = false; return; }
+    const { job_id, total } = data;
+    console.log(`[RecsRefresh] Job started — job_id=${job_id}, total=${total}`);
+    msg.textContent = `Processing 0 / ${total} users…`;
+
+    if (_recsRefreshTimer) clearInterval(_recsRefreshTimer);
+    _recsRefreshTimer = setInterval(async () => {
+      try {
+        const s = await api(`/admin/recommendations/refresh-status/${job_id}`);
+        if (!s) return;
+        console.log(`[RecsRefresh] Poll — status=${s.status}, processed=${s.processed}/${s.total}, errors=${s.errors.length}`);
+
+        const pct = s.total > 0 ? Math.round((s.processed / s.total) * 100) : 0;
+        fill.style.width = `${pct}%`;
+        msg.textContent = `Processing ${s.processed} / ${s.total} users…`;
+
+        if (s.status === 'complete') {
+          clearInterval(_recsRefreshTimer);
+          _recsRefreshTimer = null;
+          fill.style.width = '100%';
+          msg.style.color = '#81c784';
+          msg.textContent = `✓ Refreshed recommendations for ${s.processed} users`;
+          console.log(`[RecsRefresh] Complete — processed=${s.processed}, errors=${s.errors.length}`);
+          btn.disabled = false;
+        } else if (s.status === 'error') {
+          clearInterval(_recsRefreshTimer);
+          _recsRefreshTimer = null;
+          msg.style.color = '#e57373';
+          msg.textContent = `✗ Error: ${s.errors[0]?.error || 'Unknown error'}`;
+          console.log(`[RecsRefresh] Error — ${JSON.stringify(s.errors)}`);
+          btn.disabled = false;
+        }
+      } catch (e) {
+        console.error('[RecsRefresh] Poll error:', e);
+      }
+    }, 1000);
+  } catch (e) {
+    msg.style.color = '#e57373';
+    msg.textContent = `✗ Failed to start: ${e.message}`;
+    console.error('[RecsRefresh] Failed to start job:', e);
+    btn.disabled = false;
+  }
+}
+
 function skeletonHTML() {
   const row = n => `<div class="skeleton-grid">${'<div class="skeleton-box"></div>'.repeat(n)}</div>`;
   return row(4) + row(4) + `<div class="skeleton-grid" style="grid-template-columns:1fr 1fr">${'<div class="skeleton-box" style="height:110px"></div>'.repeat(2)}</div>`;
