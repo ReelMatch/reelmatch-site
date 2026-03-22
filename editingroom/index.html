@@ -1464,11 +1464,48 @@
           <h1 class="section-title">Movies</h1>
           <div class="section-subtitle" id="movies-subtitle">Cached movie catalogue</div>
         </div>
+        <button class="btn btn-ghost btn-sm" onclick="loadMovieHealthStats()">⟳ Refresh Health</button>
       </div>
+
+      <!-- Health stats pills -->
+      <div id="movie-health-bar">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="movie-action-row">
+        <button class="btn btn-ghost btn-sm" onclick="loadMovieDuplicates()">🔍 Duplicates</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadMoviesMissingData('poster_path')">🖼 No Poster</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadMoviesMissingData('overview')">📝 No Overview</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadMoviesMissingData('cast_data')">🎭 No Cast</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadMoviesMissingData('crew')">🎬 No Crew</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadMoviesLowVoteCount()">📊 Low Votes</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadMoviesRecent()">🆕 Recently Added</button>
+        <button class="btn btn-primary btn-sm" onclick="loadMovies()">🎥 Trending</button>
+      </div>
+
+      <!-- Re-cache single movie by TMDB ID -->
+      <div style="display:flex;gap:8px;margin-bottom:20px;align-items:center">
+        <input type="number" id="recache-tmdb-id" placeholder="TMDB ID — re-cache single movie"
+               style="max-width:280px;padding:8px 12px;font-size:13px;border-radius:8px"
+               onkeydown="if(event.key==='Enter')recacheSingleMovie()" />
+        <button class="btn btn-primary btn-sm" onclick="recacheSingleMovie()">Re-cache</button>
+      </div>
+
+      <!-- Search -->
       <div class="search-bar">
         <input type="text" id="movie-search" placeholder="Search movies…" onkeydown="if(event.key==='Enter')searchMovies()" />
         <button class="btn btn-primary btn-sm" onclick="searchMovies()">Search</button>
       </div>
+
+      <!-- Bulk action bar (sticky, shown when rows are checked) -->
+      <div class="movie-bulk-bar" id="movie-bulk-bar">
+        <span id="movie-bulk-count" style="font-size:13px;color:var(--text-muted)">0 selected</span>
+        <button class="btn btn-ghost btn-sm" onclick="bulkRefreshMovies()">⟳ Re-cache Selected</button>
+        <button class="btn btn-danger btn-sm" onclick="bulkDeleteMovies()">Delete Selected</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearMovieSelection()" style="margin-left:auto">✕ Cancel</button>
+      </div>
+
       <div id="movies-table-wrap">
         <div class="loading"><div class="spinner"></div></div>
       </div>
