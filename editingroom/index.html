@@ -4100,6 +4100,10 @@ function renderUserPanel(u) {
               : `<button class="btn btn-danger" style="flex:1;justify-content:center;background:rgba(120,0,0,.7);border-color:rgba(255,80,80,.3)" onclick="panelBan()">🚫 Permanently Ban</button>`
             }
           </div>
+          <div class="panel-action-row" style="margin-top:8px">
+            <button class="btn" style="flex:1;justify-content:center;background:transparent;border:1px solid rgba(229,115,115,.5);color:#e57373" onclick="panelClearRatings()">Clear All Ratings</button>
+            <button class="btn" style="flex:1;justify-content:center;background:transparent;border:1px solid rgba(229,115,115,.5);color:#e57373" onclick="panelClearReviews()">Clear All Reviews</button>
+          </div>
         </div>
       </div>
     </div>
