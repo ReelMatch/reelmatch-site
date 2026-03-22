@@ -374,6 +374,56 @@
       margin-top: 4px;
     }
 
+    /* Rec engine log console */
+    .rec-log-console {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px;
+      overflow: hidden;
+    }
+    .rec-log-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .rec-log-actions { display: flex; gap: 4px; align-items: center; }
+    .rec-log-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 2px 7px;
+      font-size: 13px;
+      border-radius: 4px;
+      line-height: 1.4;
+      transition: color .15s, background .15s;
+    }
+    .rec-log-btn:hover { color: var(--text-primary); background: rgba(245,240,232,0.08); }
+    .rec-log-body {
+      height: 300px;
+      overflow-y: scroll;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .rec-log-line { white-space: pre; line-height: 1.7; }
+    .rec-log-line.info     { color: #6b6560; }
+    .rec-log-line.ok       { color: #27ae60; }
+    .rec-log-line.error    { color: #c0392b; }
+    .rec-log-line.header   { color: #f5f0e8; }
+    .rec-log-line.progress { color: #f5a623; }
+
     /* Skeleton loader */
     .skeleton-grid {
       display: grid;
