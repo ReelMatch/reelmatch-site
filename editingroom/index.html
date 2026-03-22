@@ -2090,7 +2090,7 @@ function navigate(section) {
     case 'users':      loadUsers();                 break;
     case 'banned':     loadBannedUsers();           break;
     case 'reports':    loadReports();               break;
-    case 'movies':     loadMovies();                break;
+    case 'movies':     loadMovies(); loadMovieHealthStats(); break;
     case 'analytics':  loadAnalytics();             break;
     case 'appdev':     loadAppDev();               break;
     case 'settings':   initTimezoneSettings(); renderEmailTemplateList(); break;
