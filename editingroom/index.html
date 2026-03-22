@@ -338,6 +338,42 @@
     .import-detail { font-size: 13.5px; color: var(--text-primary); }
     .import-meta   { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
 
+    /* Recommendations refresh panel */
+    .recs-refresh-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .recs-refresh-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .progress-bar-wrap {
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 3px;
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+    .recs-refresh-msg {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
     /* Skeleton loader */
     .skeleton-grid {
       display: grid;
