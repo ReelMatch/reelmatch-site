@@ -3272,9 +3272,9 @@ async function searchMovies() {
   const wrap = document.getElementById('movies-table-wrap');
   wrap.innerHTML = `<div class="loading"><div class="spinner"></div> Searching…</div>`;
   try {
-    const data = await api(`/movies/search?q=${encodeURIComponent(q)}&page_size=20`);
+    const data = await api(`/admin/movies/search?q=${encodeURIComponent(q)}&page_size=20`);
     if (!data) return;
-    const movies = data.results || data || [];
+    const movies = data.movies || data.results || data || [];
     renderMoviesTable(movies);
   } catch (e) {
     wrap.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
