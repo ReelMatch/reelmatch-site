@@ -3648,6 +3648,13 @@ function renderUserPanel(u) {
               <button class="pf-edit-btn" onclick="startFieldEdit('timezone')" title="Edit Timezone">✎</button>
             </div>
           </div>
+          <div class="pf-row">
+            <div class="pf-label">Theme</div>
+            <div class="pf-val-wrap" id="pf-theme_preference">
+              <span class="pf-val pf-editable${!u.theme_preference ? ' empty' : ''}" onclick="startFieldEdit('theme_preference')">${esc(u.theme_preference || '—')}</span>
+              <button class="pf-edit-btn" onclick="startFieldEdit('theme_preference')" title="Edit Theme">✎</button>
+            </div>
+          </div>
         </div>
       </div>
 
