@@ -663,8 +663,3 @@ async function exportAnalyticsPDF() {
   toast('PDF exported', 'success');
 }
 
-/* ─── Update analytics subtitle when range changes ─────────────────── */
-(function _patchAnalyticsSubtitle() {
-  const _orig = setAnalyticsRange;
-  // subtitle updates are handled inline; no patch needed
-})();
