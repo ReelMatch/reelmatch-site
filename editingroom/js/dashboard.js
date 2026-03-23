@@ -166,13 +166,20 @@ async function copyRecLog() {
   }
 }
 
-async function startRecsRefresh() {
-  const btn      = document.getElementById('recs-refresh-btn');
+async function startRecsRefresh(phase = 'both') {
+  const btnId = phase === 'matrix' ? 'recs-matrix-btn'
+              : phase === 'recs'   ? 'recs-compute-btn'
+              : 'recs-refresh-btn';
+  const btn      = document.getElementById(btnId);
   const progress = document.getElementById('recs-refresh-progress');
   const fill     = document.getElementById('recs-progress-fill');
   const msg      = document.getElementById('recs-refresh-msg');
 
-  btn.disabled = true;
+  // Disable all three phase buttons while running
+  ['recs-matrix-btn', 'recs-compute-btn', 'recs-refresh-btn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = true;
+  });
   progress.style.display = 'block';
   fill.style.width = '0%';
   msg.style.color = 'var(--text-muted)';
@@ -180,14 +187,17 @@ async function startRecsRefresh() {
 
   clearRecLog();
   recLog('═══════════════════════════════════════', 'header');
-  recLog(`  REC ENGINE REFRESH — ${new Date().toLocaleString()}`, 'header');
+  const phaseLabel = phase === 'matrix' ? 'MATRIX BUILD'
+                   : phase === 'recs'   ? 'REC COMPUTATION'
+                   : 'FULL REFRESH (BOTH PHASES)';
+  recLog(`  REC ENGINE — ${phaseLabel} — ${new Date().toLocaleString()}`, 'header');
   recLog('═══════════════════════════════════════', 'header');
   recLogTs('▶ Sending refresh request to server…', 'info');
 
   try {
-    const data = await api('/admin/recommendations/refresh-all', { method: 'POST' });
+    const data = await api(`/admin/recommendations/refresh-all?phase=${phase}`, { method: 'POST' });
     if (!data) {
-      btn.disabled = false;
+      _enableRecsButtons();
       recLogTs('✗ No response from server', 'error');
       return;
     }
@@ -198,20 +208,17 @@ async function startRecsRefresh() {
 
     let _lastProcessed = -1;
     let _lastResults = 0;
+    let _loggedPhase1 = false;
+    let _loggedPhase2 = false;
 
     if (_recsRefreshTimer) clearInterval(_recsRefreshTimer);
     _recsRefreshTimer = setInterval(async () => {
       console.log('[RecConsole] ▶ POLL TICK — job_id:', job_id); // DEBUG
       try {
-        console.log('[RecConsole] ▶ CALLING api() for status…'); // DEBUG
         const s = await api(`/admin/recommendations/refresh-status/${job_id}`);
-        console.log('[RecConsole] ▶ api() RESOLVED — s:', s); // DEBUG
-        if (!s) { console.log('[RecConsole] s is null/undefined — returning early'); return; } // DEBUG
+        if (!s) { return; }
 
         console.log('[RecConsole] ▶ RAW STATUS RESPONSE:', JSON.stringify(s)); // DEBUG
-        console.log('[RecConsole] data.results:', s.results); // DEBUG
-        console.log('[RecConsole] data.processed:', s.processed); // DEBUG
-        console.log('[RecConsole] data.status:', s.status); // DEBUG
 
         // Update progress bar when processed count changes
         if (s.processed !== _lastProcessed) {
@@ -225,14 +232,27 @@ async function startRecsRefresh() {
         if (s.results && s.results.length > _lastResults) {
           for (let i = _lastResults; i < s.results.length; i++) {
             const r = s.results[i];
-            console.log('───────────────────────────────────────'); // DEBUG
-            console.log('[RecConsole] ▶ USER RESULT RECEIVED'); // DEBUG
-            console.log('[RecConsole] username:', r.username, 'status:', r.status); // DEBUG
-            console.log('[RecConsole] recs_stored:', r.recs_stored, 'neighbors:', r.neighbor_count); // DEBUG
-            console.log('[RecConsole] neighbor_recs:', r.neighbor_recs, 'genre_affinity_recs:', r.genre_affinity_recs); // DEBUG
-            console.log('───────────────────────────────────────'); // DEBUG
+            console.log('[RecConsole] ▶ USER RESULT:', r.username, r.phase, r.status); // DEBUG
+
+            // Insert phase separator headers on first result of each phase
+            if (r.phase === 'matrix' && !_loggedPhase1) {
+              _loggedPhase1 = true;
+              console.log('[Dashboard] ▶ PHASE 1 — matrix builds'); // DEBUG
+              recLog('───────────────────────────────────────', 'header');
+              recLogTs('▶ PHASE 1 — Building pending matrices…', 'info');
+            } else if (r.phase === 'recs' && !_loggedPhase2) {
+              _loggedPhase2 = true;
+              console.log('[Dashboard] ▶ PHASE 2 — rec computation'); // DEBUG
+              recLog('───────────────────────────────────────', 'header');
+              recLogTs('▶ PHASE 2 — Computing recommendations…', 'info');
+            }
+
             if (r.status === 'ok') {
-              recLogTs(`✓ ${r.username} — ${r.recs_stored} recs (${r.neighbor_recs} neighbor, ${r.genre_affinity_recs} genre affinity, ${r.neighbor_count} neighbors found)`, 'ok');
+              if (r.phase === 'matrix') {
+                recLogTs(`── matrix built: ${r.username} (${r.neighbor_count} neighbors)`, 'info');
+              } else {
+                recLogTs(`✓ ${r.username} — ${r.recs_stored} recs (${r.neighbor_recs} neighbor, ${r.genre_affinity_recs} genre affinity, ${r.neighbor_count} neighbors)`, 'ok');
+              }
             } else {
               recLogTs(`✗ ${r.username} — ERROR: ${r.error}`, 'error');
             }
@@ -245,7 +265,7 @@ async function startRecsRefresh() {
           _recsRefreshTimer = null;
           fill.style.width = '100%';
           msg.style.color = '#81c784';
-          msg.textContent = `✓ Refreshed recommendations for ${s.processed} users`;
+          msg.textContent = `✓ Done — processed ${s.processed} users`;
           recLog('───────────────────────────────────────', 'header');
           recLogTs(`✓ Complete — processed ${s.processed} user${s.processed !== 1 ? 's' : ''}`, 'ok');
           const errorCount = s.errors ? s.errors.length : 0;
@@ -254,8 +274,8 @@ async function startRecsRefresh() {
           } else {
             recLogTs('○ No errors', 'info');
           }
-          recLog('───────────────────────────────────────', 'header');
-          btn.disabled = false;
+          recLog('═══════════════════════════════════════', 'header');
+          _enableRecsButtons();
 
         } else if (s.status === 'error') {
           clearInterval(_recsRefreshTimer);
@@ -264,13 +284,11 @@ async function startRecsRefresh() {
           msg.textContent = `✗ Error: ${s.errors[0]?.error || 'Unknown error'}`;
           recLog('───────────────────────────────────────', 'header');
           recLogTs(`✗ Job failed: ${s.errors[0]?.error || 'Unknown error'}`, 'error');
-          recLog('───────────────────────────────────────', 'header');
-          btn.disabled = false;
+          recLog('═══════════════════════════════════════', 'header');
+          _enableRecsButtons();
         }
       } catch (e) {
-        console.error('[RecConsole] ✗ POLL CATCH FIRED — error:', e); // DEBUG
-        console.error('[RecConsole] ✗ error.message:', e.message); // DEBUG
-        console.error('[RecConsole] ✗ error.stack:', e.stack); // DEBUG
+        console.error('[RecConsole] ✗ POLL error:', e.message); // DEBUG
         recLogTs(`✗ Poll error: ${e.message}`, 'error');
       }
     }, 1000);
@@ -278,8 +296,15 @@ async function startRecsRefresh() {
     msg.style.color = '#e57373';
     msg.textContent = `✗ Failed to start: ${e.message}`;
     recLogTs(`✗ Failed to start job: ${e.message}`, 'error');
-    btn.disabled = false;
+    _enableRecsButtons();
   }
+}
+
+function _enableRecsButtons() {
+  ['recs-matrix-btn', 'recs-compute-btn', 'recs-refresh-btn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = false;
+  });
 }
 
 function skeletonHTML() {
