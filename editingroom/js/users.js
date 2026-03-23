@@ -772,9 +772,13 @@ function renderUserPanel(u) {
       <!-- Recommendations -->
       <div class="panel-section">
         <div class="panel-section-title">Recommendations</div>
+        <div id="panel-matrix-status-badge" style="margin-bottom:8px">
+          <div style="font-size:12px;color:var(--text-muted)">Loading matrix status…</div>
+        </div>
         <div class="panel-actions">
           <div class="panel-action-row">
-            <button id="recs-refresh-user-btn" class="btn btn-ghost" style="flex:1;justify-content:center" onclick="panelRefreshRecs()">Refresh Recs</button>
+            <button id="recs-rebuild-matrix-btn" class="btn btn-ghost" style="flex:1;justify-content:center" onclick="panelRefreshRecs('matrix')" title="Rebuild neighbor matrix (Phase 1)">⬡ Rebuild Matrix</button>
+            <button id="recs-recompute-recs-btn" class="btn btn-ghost" style="flex:1;justify-content:center" onclick="panelRefreshRecs('recs')" title="Recompute recommendations from stored neighbors (Phase 2)">◈ Recompute Recs</button>
           </div>
           <div id="panel-recs-log-container"></div>
         </div>
