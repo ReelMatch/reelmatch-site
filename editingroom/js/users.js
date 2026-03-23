@@ -769,6 +769,17 @@ function renderUserPanel(u) {
         </div>
       </div>
 
+      <!-- Recommendations -->
+      <div class="panel-section">
+        <div class="panel-section-title">Recommendations</div>
+        <div class="panel-actions">
+          <div class="panel-action-row">
+            <button id="recs-refresh-user-btn" class="btn btn-ghost" style="flex:1;justify-content:center" onclick="panelRefreshRecs()">Refresh Recs</button>
+          </div>
+          <div id="recs-refresh-user-msg" style="font-size:12px;color:var(--text-muted);margin-top:4px;min-height:16px"></div>
+        </div>
+      </div>
+
       <!-- Communication -->
       <div class="panel-section">
         <div class="panel-section-title">Communication</div>
