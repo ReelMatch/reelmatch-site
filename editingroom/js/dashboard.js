@@ -201,9 +201,12 @@ async function startRecsRefresh() {
 
     if (_recsRefreshTimer) clearInterval(_recsRefreshTimer);
     _recsRefreshTimer = setInterval(async () => {
+      console.log('[RecConsole] ▶ POLL TICK — job_id:', job_id); // DEBUG
       try {
+        console.log('[RecConsole] ▶ CALLING api() for status…'); // DEBUG
         const s = await api(`/admin/recommendations/refresh-status/${job_id}`);
-        if (!s) return;
+        console.log('[RecConsole] ▶ api() RESOLVED — s:', s); // DEBUG
+        if (!s) { console.log('[RecConsole] s is null/undefined — returning early'); return; } // DEBUG
 
         console.log('[RecConsole] ▶ RAW STATUS RESPONSE:', JSON.stringify(s)); // DEBUG
         console.log('[RecConsole] data.results:', s.results); // DEBUG
