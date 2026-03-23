@@ -9,10 +9,8 @@ let _dashInterval = null;
 async function loadDashboard() {
   const body = document.getElementById('dashboard-body');
 
-  // Show skeleton on first load (no real content yet)
-  if (!body.querySelector('.stats-grid')) {
-    body.innerHTML = skeletonHTML();
-  }
+  console.log('[Dashboard] ▶ SHOWING SKELETON STATE'); // DEBUG
+  body.innerHTML = skeletonHTML();
 
   let s;
   try {
@@ -24,6 +22,7 @@ async function loadDashboard() {
     return;
   }
 
+  console.log('[Dashboard] ▶ STATS LOADED — replacing skeletons'); // DEBUG
   document.getElementById('health-dot').classList.remove('hidden');
   document.getElementById('dash-updated').textContent =
     'Updated ' + new Date().toLocaleTimeString();
