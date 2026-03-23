@@ -59,7 +59,7 @@ let state = {
   usersPageSize: 20,
   _filteredUsers: null,
   _usersTotalFetched: false,
-  sortCol: 'created_at',
+  sortCol: 'last_login_at',
   sortDir: 'desc',
   _currentPageData: null,
 };
