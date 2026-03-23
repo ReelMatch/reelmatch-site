@@ -268,6 +268,9 @@ async function startRecsRefresh() {
           btn.disabled = false;
         }
       } catch (e) {
+        console.error('[RecConsole] ✗ POLL CATCH FIRED — error:', e); // DEBUG
+        console.error('[RecConsole] ✗ error.message:', e.message); // DEBUG
+        console.error('[RecConsole] ✗ error.stack:', e.stack); // DEBUG
         recLogTs(`✗ Poll error: ${e.message}`, 'error');
       }
     }, 1000);
