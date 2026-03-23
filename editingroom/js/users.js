@@ -1055,6 +1055,47 @@ async function panelResetPassword() {
   } catch (e) { toast(e.message, 'error'); }
 }
 
+async function loadPanelMatrixStatus(userId) {
+  const badge = document.getElementById('panel-matrix-status-badge');
+  if (!badge) return;
+  try {
+    const s = await api(`/admin/users/${userId}/matrix-status`);
+    if (!s) { badge.innerHTML = ''; return; }
+    console.log('[Users] ▶ MATRIX STATUS:', s); // DEBUG
+
+    const STATUS_DOT = {
+      pending:  { dot: '🟡', label: 'Pending',   color: '#f5a623' },
+      building: { dot: '🔵', label: 'Building',  color: '#4a9eff' },
+      complete: { dot: '🟢', label: 'Complete',  color: '#6dc86d' },
+      error:    { dot: '🔴', label: 'Error',     color: '#e57373' },
+    };
+    const info = STATUS_DOT[s.status] || { dot: '⚪', label: s.status, color: 'var(--text-muted)' };
+
+    let detail = '';
+    if (s.status === 'complete') {
+      const parts = [];
+      if (s.completed_at) parts.push(`built ${formatDate(s.completed_at)}`);
+      if (s.ratings_count_at_build != null) parts.push(`${s.ratings_count_at_build} ratings at build`);
+      if (parts.length) detail = `<span style="color:var(--text-muted);font-size:11px;margin-left:8px">${esc(parts.join(' · '))}</span>`;
+    } else if (s.status === 'error' && s.error) {
+      detail = `<span style="color:#e57373;font-size:11px;margin-left:8px">${esc(s.error)}</span>`;
+    } else if (s.status === 'building' && s.started_at) {
+      detail = `<span style="color:var(--text-muted);font-size:11px;margin-left:8px">started ${formatDate(s.started_at)}</span>`;
+    } else if (s.status === 'pending' && s.queued_at) {
+      detail = `<span style="color:var(--text-muted);font-size:11px;margin-left:8px">queued ${formatDate(s.queued_at)}</span>`;
+    }
+
+    badge.innerHTML = `
+      <div style="display:flex;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:6px">
+        <span style="font-size:13px;margin-right:6px">${info.dot}</span>
+        <span style="font-size:12px;font-weight:600;color:${info.color}">${info.label}</span>
+        ${detail}
+      </div>`;
+  } catch (e) {
+    badge.innerHTML = `<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Matrix status unavailable</div>`;
+  }
+}
+
 let _panelRecsTimer = null;
 
 function _panelLogTs() {
