@@ -1048,6 +1048,31 @@ async function panelResetPassword() {
   } catch (e) { toast(e.message, 'error'); }
 }
 
+async function panelRefreshRecs() {
+  if (!_panelUser) return;
+  const btn = document.getElementById('recs-refresh-user-btn');
+  const msg = document.getElementById('recs-refresh-user-msg');
+  console.log('═══════════════════════════════════════');
+  console.log(`[Users] ▶ REFRESH RECS — user: ${_panelUser.username} (${_panelUser.id})`);
+  console.log('═══════════════════════════════════════');
+  btn.disabled = true;
+  btn.textContent = 'Refreshing…';
+  if (msg) { msg.style.color = 'var(--text-muted)'; msg.textContent = ''; }
+  try {
+    const res = await api(`/admin/recommendations/refresh-user/${_panelUser.id}`, { method: 'POST' });
+    console.log('[Users] ▶ REFRESH RECS response:', res);
+    if (msg) { msg.style.color = '#81c784'; msg.textContent = `✓ Recs queued for ${res.username || _panelUser.username}`; }
+    setTimeout(() => {
+      if (btn) { btn.disabled = false; btn.textContent = 'Refresh Recs'; }
+      if (msg) msg.textContent = '';
+    }, 3000);
+  } catch (e) {
+    console.error('[Users] ✗ REFRESH RECS error:', e);
+    if (msg) { msg.style.color = '#e57373'; msg.textContent = `✗ ${e.message}`; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Refresh Recs'; }
+  }
+}
+
 function openSetPasswordModal() {
   if (!_panelUser) return;
   const input = document.getElementById('set-password-input');
