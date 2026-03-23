@@ -1140,24 +1140,29 @@ function _closePanelRecLog() {
   if (_panelRecsTimer) { clearInterval(_panelRecsTimer); _panelRecsTimer = null; }
 }
 
-async function panelRefreshRecs() {
+async function panelRefreshRecs(phase = 'both') {
   if (!_panelUser) return;
-  const btn = document.getElementById('recs-refresh-user-btn');
-  const username = _panelUser.username;
+  const matrixBtn  = document.getElementById('recs-rebuild-matrix-btn');
+  const recsBtn    = document.getElementById('recs-recompute-recs-btn');
+  const username   = _panelUser.username;
+  const phaseLabel = phase === 'matrix' ? '⬡ Rebuild Matrix'
+                   : phase === 'recs'   ? '◈ Recompute Recs'
+                   : 'Refreshing…';
 
   console.log('═══════════════════════════════════════');
-  console.log(`[Users] ▶ REFRESH RECS — user: ${username} (${_panelUser.id})`);
+  console.log(`[Users] ▶ REFRESH RECS — user: ${username} (${_panelUser.id}) phase=${phase}`);
   console.log('═══════════════════════════════════════');
 
   // Inject log console if not yet present
   let cons = document.getElementById('panel-recs-log-console');
+  const logTitle = `Rec Engine — ${username} (${phase})`;
   if (!cons) {
     const container = document.getElementById('panel-recs-log-container');
     if (container) {
       container.innerHTML = `
         <div id="panel-recs-log-console" class="rec-log-console" style="margin-top:10px">
           <div class="rec-log-header">
-            <span id="panel-recs-log-title">Rec Engine — ${esc(username)}</span>
+            <span id="panel-recs-log-title">${esc(logTitle)}</span>
             <div class="rec-log-actions">
               <button id="panel-recs-log-copy-btn" class="rec-log-btn" onclick="_copyPanelRecLog()" title="Copy log">📋</button>
               <button class="rec-log-btn" onclick="_closePanelRecLog()" title="Close">×</button>
@@ -1172,47 +1177,69 @@ async function panelRefreshRecs() {
     const body = document.getElementById('panel-recs-log-body');
     if (body) body.innerHTML = '';
     const title = document.getElementById('panel-recs-log-title');
-    if (title) title.textContent = `Rec Engine — ${username}`;
+    if (title) title.textContent = logTitle;
     cons.style.display = 'block';
   }
 
   if (_panelRecsTimer) { clearInterval(_panelRecsTimer); _panelRecsTimer = null; }
 
-  btn.disabled = true;
-  btn.textContent = 'Refreshing…';
+  if (matrixBtn) { matrixBtn.disabled = true; }
+  if (recsBtn)   { recsBtn.disabled = true; }
 
-  _panelRecLogTs(`▶ Refresh queued for ${username}…`, 'info');
+  _panelRecLogTs(`▶ ${phaseLabel} queued for ${username}…`, 'info');
 
   try {
-    const res = await api(`/admin/recommendations/refresh-user/${_panelUser.id}`, { method: 'POST' });
+    const res = await api(`/admin/recommendations/refresh-user/${_panelUser.id}?phase=${phase}`, { method: 'POST' });
     console.log('[Users] ▶ REFRESH RECS response:', res);
 
     const job_id = res.job_id;
     _panelRecLogTs('○ Waiting for worker…', 'info');
 
     _panelRecsTimer = setInterval(async () => {
-      console.log(`[Users] ▶ REFRESH RECS POLL — job_id: ${job_id}`);
+      console.log(`[Users] ▶ REFRESH RECS POLL — job_id: ${job_id} phase=${phase}`);
       try {
         const s = await api(`/admin/recommendations/refresh-status/${job_id}`);
         if (!s) return;
         console.log('[Users] ▶ REFRESH RECS STATUS:', JSON.stringify(s));
 
-        if (s.status === 'running' && s.processed === 0) {
-          // Still waiting — no new log line needed (already logged "Waiting")
-        }
-
         if (s.results && s.results.length > 0) {
           const r = s.results[0];
           if (r && !cons._resultLogged) {
             cons._resultLogged = true;
-            _panelRecLogTs('── Running recommendation engine…', 'info');
-            if (r.status === 'ok') {
-              _panelRecLogTs(
-                `✓ Complete — ${r.recs_stored} recs (${r.neighbor_recs} neighbor, ${r.genre_affinity_recs} genre affinity, ${r.neighbor_count} neighbors found)`,
-                'ok'
-              );
-            } else {
-              _panelRecLogTs(`✗ ERROR: ${r.error}`, 'error');
+            if (r.phase === 'matrix' || phase === 'matrix') {
+              _panelRecLogTs('── Running matrix build…', 'info');
+              if (r.status === 'ok') {
+                _panelRecLogTs(`✓ Matrix built — ${r.neighbor_count} neighbors found`, 'ok');
+              } else {
+                _panelRecLogTs(`✗ Matrix ERROR: ${r.error}`, 'error');
+              }
+            }
+            if (r.phase === 'recs' || phase === 'recs') {
+              _panelRecLogTs('── Running recommendation engine…', 'info');
+              if (r.status === 'ok') {
+                _panelRecLogTs(
+                  `✓ Complete — ${r.recs_stored} recs (${r.neighbor_recs} neighbor, ${r.genre_affinity_recs} genre affinity, ${r.neighbor_count} neighbors)`,
+                  'ok'
+                );
+              } else {
+                _panelRecLogTs(`✗ Rec ERROR: ${r.error}`, 'error');
+              }
+            }
+          }
+          // For phase=both, log second result if present
+          if (phase === 'both' && s.results.length > 1) {
+            const r2 = s.results[1];
+            if (r2 && !cons._result2Logged) {
+              cons._result2Logged = true;
+              _panelRecLogTs('── Running recommendation engine…', 'info');
+              if (r2.status === 'ok') {
+                _panelRecLogTs(
+                  `✓ Complete — ${r2.recs_stored} recs (${r2.neighbor_recs} neighbor, ${r2.genre_affinity_recs} genre affinity, ${r2.neighbor_count} neighbors)`,
+                  'ok'
+                );
+              } else {
+                _panelRecLogTs(`✗ Rec ERROR: ${r2.error}`, 'error');
+              }
             }
           }
         }
@@ -1220,8 +1247,12 @@ async function panelRefreshRecs() {
         if (s.status === 'complete') {
           clearInterval(_panelRecsTimer);
           _panelRecsTimer = null;
-          btn.disabled = false;
-          btn.textContent = 'Refresh Recs';
+          if (matrixBtn) { matrixBtn.disabled = false; }
+          if (recsBtn)   { recsBtn.disabled = false; }
+          // Refresh matrix status badge after rebuild
+          if (_panelUser && (phase === 'matrix' || phase === 'both')) {
+            loadPanelMatrixStatus(_panelUser.id);
+          }
         }
       } catch (e) {
         console.error('[Users] ✗ REFRESH RECS POLL error:', e);
@@ -1232,8 +1263,8 @@ async function panelRefreshRecs() {
   } catch (e) {
     console.error('[Users] ✗ REFRESH RECS error:', e);
     _panelRecLogTs(`✗ Failed: ${e.message}`, 'error');
-    btn.disabled = false;
-    btn.textContent = 'Refresh Recs';
+    if (matrixBtn) { matrixBtn.disabled = false; }
+    if (recsBtn)   { recsBtn.disabled = false; }
   }
 }
 
