@@ -830,7 +830,6 @@ function renderUserPanel(u) {
       <div id="modlog-body"><div class="loading"><div class="spinner"></div> Loading…</div></div>
     </div>
   `;
-}
 
   // Load matrix status badge asynchronously after panel renders
   if (u.id) loadPanelMatrixStatus(u.id);
