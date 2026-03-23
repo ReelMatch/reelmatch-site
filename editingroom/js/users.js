@@ -1048,28 +1048,144 @@ async function panelResetPassword() {
   } catch (e) { toast(e.message, 'error'); }
 }
 
+let _panelRecsTimer = null;
+
+function _panelLogTs() {
+  const n = new Date();
+  return [n.getHours(), n.getMinutes(), n.getSeconds()]
+    .map(v => String(v).padStart(2, '0')).join(':');
+}
+
+function _panelRecLog(text, type = 'info') {
+  const body = document.getElementById('panel-recs-log-body');
+  if (!body) return;
+  const line = document.createElement('div');
+  line.className = `rec-log-line ${type}`;
+  line.textContent = text;
+  body.appendChild(line);
+  body.scrollTop = body.scrollHeight;
+}
+
+function _panelRecLogTs(text, type = 'info') {
+  _panelRecLog(`[${_panelLogTs()}] ${text}`, type);
+}
+
+async function _copyPanelRecLog() {
+  const body = document.getElementById('panel-recs-log-body');
+  const btn  = document.getElementById('panel-recs-log-copy-btn');
+  if (!body || !btn) return;
+  const text = Array.from(body.querySelectorAll('.rec-log-line'))
+    .map(el => el.textContent).join('\n');
+  try {
+    await navigator.clipboard.writeText(text);
+    btn.textContent = '✓ Copied';
+    setTimeout(() => { btn.textContent = '📋'; }, 1800);
+  } catch {
+    btn.textContent = '✗';
+    setTimeout(() => { btn.textContent = '📋'; }, 1800);
+  }
+}
+
+function _closePanelRecLog() {
+  const cons = document.getElementById('panel-recs-log-console');
+  if (cons) cons.style.display = 'none';
+  if (_panelRecsTimer) { clearInterval(_panelRecsTimer); _panelRecsTimer = null; }
+}
+
 async function panelRefreshRecs() {
   if (!_panelUser) return;
   const btn = document.getElementById('recs-refresh-user-btn');
-  const msg = document.getElementById('recs-refresh-user-msg');
+  const username = _panelUser.username;
+
   console.log('═══════════════════════════════════════');
-  console.log(`[Users] ▶ REFRESH RECS — user: ${_panelUser.username} (${_panelUser.id})`);
+  console.log(`[Users] ▶ REFRESH RECS — user: ${username} (${_panelUser.id})`);
   console.log('═══════════════════════════════════════');
+
+  // Inject log console if not yet present
+  let cons = document.getElementById('panel-recs-log-console');
+  if (!cons) {
+    const container = document.getElementById('panel-recs-log-container');
+    if (container) {
+      container.innerHTML = `
+        <div id="panel-recs-log-console" class="rec-log-console" style="margin-top:10px">
+          <div class="rec-log-header">
+            <span id="panel-recs-log-title">Rec Engine — ${esc(username)}</span>
+            <div class="rec-log-actions">
+              <button id="panel-recs-log-copy-btn" class="rec-log-btn" onclick="_copyPanelRecLog()" title="Copy log">📋</button>
+              <button class="rec-log-btn" onclick="_closePanelRecLog()" title="Close">×</button>
+            </div>
+          </div>
+          <div id="panel-recs-log-body" class="rec-log-body" style="height:200px"></div>
+        </div>`;
+      cons = document.getElementById('panel-recs-log-console');
+    }
+  } else {
+    // Reset for re-run
+    const body = document.getElementById('panel-recs-log-body');
+    if (body) body.innerHTML = '';
+    const title = document.getElementById('panel-recs-log-title');
+    if (title) title.textContent = `Rec Engine — ${username}`;
+    cons.style.display = 'block';
+  }
+
+  if (_panelRecsTimer) { clearInterval(_panelRecsTimer); _panelRecsTimer = null; }
+
   btn.disabled = true;
   btn.textContent = 'Refreshing…';
-  if (msg) { msg.style.color = 'var(--text-muted)'; msg.textContent = ''; }
+
+  _panelRecLogTs(`▶ Refresh queued for ${username}…`, 'info');
+
   try {
     const res = await api(`/admin/recommendations/refresh-user/${_panelUser.id}`, { method: 'POST' });
     console.log('[Users] ▶ REFRESH RECS response:', res);
-    if (msg) { msg.style.color = '#81c784'; msg.textContent = `✓ Recs queued for ${res.username || _panelUser.username}`; }
-    setTimeout(() => {
-      if (btn) { btn.disabled = false; btn.textContent = 'Refresh Recs'; }
-      if (msg) msg.textContent = '';
-    }, 3000);
+
+    const job_id = res.job_id;
+    _panelRecLogTs('○ Waiting for worker…', 'info');
+
+    _panelRecsTimer = setInterval(async () => {
+      console.log(`[Users] ▶ REFRESH RECS POLL — job_id: ${job_id}`);
+      try {
+        const s = await api(`/admin/recommendations/refresh-status/${job_id}`);
+        if (!s) return;
+        console.log('[Users] ▶ REFRESH RECS STATUS:', JSON.stringify(s));
+
+        if (s.status === 'running' && s.processed === 0) {
+          // Still waiting — no new log line needed (already logged "Waiting")
+        }
+
+        if (s.results && s.results.length > 0) {
+          const r = s.results[0];
+          if (r && !cons._resultLogged) {
+            cons._resultLogged = true;
+            _panelRecLogTs('── Running recommendation engine…', 'info');
+            if (r.status === 'ok') {
+              _panelRecLogTs(
+                `✓ Complete — ${r.recs_stored} recs (${r.neighbor_recs} neighbor, ${r.genre_affinity_recs} genre affinity, ${r.neighbor_count} neighbors found)`,
+                'ok'
+              );
+            } else {
+              _panelRecLogTs(`✗ ERROR: ${r.error}`, 'error');
+            }
+          }
+        }
+
+        if (s.status === 'complete') {
+          clearInterval(_panelRecsTimer);
+          _panelRecsTimer = null;
+          btn.disabled = false;
+          btn.textContent = 'Refresh Recs';
+        }
+      } catch (e) {
+        console.error('[Users] ✗ REFRESH RECS POLL error:', e);
+        _panelRecLogTs(`✗ Poll error: ${e.message}`, 'error');
+      }
+    }, 1000);
+
   } catch (e) {
     console.error('[Users] ✗ REFRESH RECS error:', e);
-    if (msg) { msg.style.color = '#e57373'; msg.textContent = `✗ ${e.message}`; }
-    if (btn) { btn.disabled = false; btn.textContent = 'Refresh Recs'; }
+    _panelRecLogTs(`✗ Failed: ${e.message}`, 'error');
+    btn.disabled = false;
+    btn.textContent = 'Refresh Recs';
   }
 }
 
