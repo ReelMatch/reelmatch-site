@@ -205,6 +205,11 @@ async function startRecsRefresh() {
         const s = await api(`/admin/recommendations/refresh-status/${job_id}`);
         if (!s) return;
 
+        console.log('[RecConsole] ▶ RAW STATUS RESPONSE:', JSON.stringify(s)); // DEBUG
+        console.log('[RecConsole] data.results:', s.results); // DEBUG
+        console.log('[RecConsole] data.processed:', s.processed); // DEBUG
+        console.log('[RecConsole] data.status:', s.status); // DEBUG
+
         // Update progress bar when processed count changes
         if (s.processed !== _lastProcessed) {
           const pct = s.total > 0 ? Math.round((s.processed / s.total) * 100) : 0;
