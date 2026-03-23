@@ -256,6 +256,7 @@ function renderUsersTable(users, total) {
               <td style="color:var(--text-muted)">${esc(u.email||'—')}</td>
               <td>${u.email_verified === true ? '<span class="badge badge-verified">Yes</span>' : '<span class="badge badge-pending">No</span>'}</td>
               <td style="color:var(--text-muted);font-size:12px">${formatDate(u.created_at)}</td>
+              <td style="color:var(--text-muted);font-size:12px">${u.last_login_at ? formatDate(u.last_login_at) : '—'}</td>
               <td style="text-align:right;${rc === 0 ? 'color:var(--text-muted)' : ''}">${rc.toLocaleString()}</td>
               <td style="text-align:right;${rv === 0 ? 'color:var(--text-muted)' : ''}">${rv.toLocaleString()}</td>
             </tr>
