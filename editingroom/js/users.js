@@ -832,6 +832,10 @@ function renderUserPanel(u) {
   `;
 }
 
+  // Load matrix status badge asynchronously after panel renders
+  if (u.id) loadPanelMatrixStatus(u.id);
+}
+
 function switchPanelTab(tab, el) {
   document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.panel-tab-content').forEach(t => t.classList.remove('active'));
