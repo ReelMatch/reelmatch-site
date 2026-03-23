@@ -88,8 +88,10 @@ async function api(path, opts = {}) {
       throw new Error(detail);
     }
     if (res.status === 204) return null;
+    const data = await res.json();
+    console.log('[Utils] ▶ RETURNING DATA TO CALLER:', data); // DEBUG
     console.log('───────────────────────────────────────'); // DEBUG
-    return await res.json();
+    return data;
   } catch (e) {
     console.error('[Utils] ✗ API ERROR:', e); // DEBUG
     console.log('───────────────────────────────────────'); // DEBUG
