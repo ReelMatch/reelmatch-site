@@ -31,6 +31,7 @@ function calcUsersPageSize() {
 }
 
 async function loadUsers() {
+  console.log('[Users] ▶ DEFAULT SORT: last_login_at desc'); // DEBUG
   calcUsersPageSize();
   state.userQuery = '';
   state.usersFilter = null;
