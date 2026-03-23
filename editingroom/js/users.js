@@ -233,6 +233,7 @@ function renderUsersTable(users, total) {
           <th class="sortable" onclick="setSortCol('email')">Email ${sortIcon('email')}</th>
           <th class="sortable" onclick="setSortCol('email_verified')">Verified ${sortIcon('email_verified')}</th>
           <th class="sortable" onclick="setSortCol('created_at')">Joined ${sortIcon('created_at')}</th>
+          <th class="sortable" onclick="setSortCol('last_login_at')">Last Active ${sortIcon('last_login_at')}</th>
           <th class="sortable" style="text-align:right" onclick="setSortCol('ratings_count')">Ratings ${sortIcon('ratings_count')}</th>
           <th class="sortable" style="text-align:right" onclick="setSortCol('reviews_count')">Reviews ${sortIcon('reviews_count')}</th>
         </tr></thead>
