@@ -554,13 +554,14 @@ function renderMoviePanel(data) {
       </div>
 
       <!-- ACTIONS -->
-      <div style="border-top:1px solid var(--border);padding-top:16px">
+      <div id="movie-panel-actions" style="border-top:1px solid var(--border);padding-top:16px">
         <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:10px">Actions</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" onclick="navigate('recengine');closeMoviePanel();setTimeout(()=>startKeywordFetch(),100)">🔑 Fetch Keywords</button>
-          <button class="btn btn-ghost btn-sm" onclick="navigate('recengine');closeMoviePanel();setTimeout(()=>startSimPrecomputeRE(),100)">⧫ Compute Similarities</button>
+          <button id="movie-panel-btn-keywords" class="btn btn-ghost btn-sm" onclick="moviePanelFetchKeywords('${m.id}')">🔑 Fetch Keywords</button>
+          <button id="movie-panel-btn-sim" class="btn btn-ghost btn-sm" onclick="moviePanelComputeSim('${m.id}')">⧫ Compute Similarities</button>
           <button class="btn btn-ghost btn-sm" onclick="toast('Coming soon','info')">⟳ Refresh from TMDB</button>
         </div>
+        <div id="movie-panel-action-msg" style="font-size:12px;color:var(--text-muted);margin-top:8px;display:none"></div>
       </div>
 
     </div>`;
