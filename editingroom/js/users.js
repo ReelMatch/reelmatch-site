@@ -1196,21 +1196,48 @@ async function panelRefreshRecs(phase = 'both') {
     console.log('[Users] ▶ REFRESH RECS response:', res);
 
     const job_id = res.job_id;
-    _panelRecLogTs('○ Waiting for worker…', 'info');
+    _panelRecLogTs(`▶ Job queued for ${username}`, 'info');
+
+    let _workerStartLogged = false;
+    let _resultLogged = false;
+    let _result2Logged = false;
+    const pollStartTime = Date.now();
 
     _panelRecsTimer = setInterval(async () => {
       console.log(`[Users] ▶ REFRESH RECS POLL — job_id: ${job_id} phase=${phase}`);
+
+      if (Date.now() - pollStartTime > 180000) {
+        clearInterval(_panelRecsTimer);
+        _panelRecsTimer = null;
+        _panelRecLogTs('✗ Timed out — job may still be running in background. Check Railway logs.', 'error');
+        if (matrixBtn) { matrixBtn.disabled = false; }
+        if (recsBtn)   { recsBtn.disabled = false; }
+        console.log('[Users] ▶ POLLING STOPPED — status: timeout'); // DEBUG
+        return;
+      }
+
       try {
         const s = await api(`/admin/recommendations/refresh-status/${job_id}`);
         if (!s) return;
         console.log('[Users] ▶ REFRESH RECS STATUS:', JSON.stringify(s));
 
+        // Log when worker transitions to running
+        if (s.status === 'running' && !_workerStartLogged) {
+          _workerStartLogged = true;
+          _panelRecLogTs('── Worker started', 'info');
+        }
+
+        // Show elapsed time every poll while running
+        if (s.status === 'running') {
+          const elapsedSecs = Math.floor((Date.now() - pollStartTime) / 1000);
+          _panelRecLogTs(`── Running... (${elapsedSecs}s elapsed)`, 'info');
+        }
+
         if (s.results && s.results.length > 0) {
           const r = s.results[0];
-          if (r && !cons._resultLogged) {
-            cons._resultLogged = true;
+          if (r && !_resultLogged) {
+            _resultLogged = true;
             if (r.phase === 'matrix' || phase === 'matrix') {
-              _panelRecLogTs('── Running matrix build…', 'info');
               if (r.status === 'ok') {
                 _panelRecLogTs(`✓ Matrix built — ${r.neighbor_count} neighbors found`, 'ok');
               } else {
@@ -1218,10 +1245,9 @@ async function panelRefreshRecs(phase = 'both') {
               }
             }
             if (r.phase === 'recs' || phase === 'recs') {
-              _panelRecLogTs('── Running recommendation engine…', 'info');
               if (r.status === 'ok') {
                 _panelRecLogTs(
-                  `✓ Complete — ${r.recs_stored} recs (${r.neighbor_recs} neighbor, ${r.genre_affinity_recs} genre affinity, ${r.neighbor_count} neighbors)`,
+                  `✓ Complete — ${r.recs_stored} recs (${r.neighbor_recs} neighbor, ${r.genre_affinity_recs} genre affinity)`,
                   'ok'
                 );
               } else {
@@ -1232,12 +1258,11 @@ async function panelRefreshRecs(phase = 'both') {
           // For phase=both, log second result if present
           if (phase === 'both' && s.results.length > 1) {
             const r2 = s.results[1];
-            if (r2 && !cons._result2Logged) {
-              cons._result2Logged = true;
-              _panelRecLogTs('── Running recommendation engine…', 'info');
+            if (r2 && !_result2Logged) {
+              _result2Logged = true;
               if (r2.status === 'ok') {
                 _panelRecLogTs(
-                  `✓ Complete — ${r2.recs_stored} recs (${r2.neighbor_recs} neighbor, ${r2.genre_affinity_recs} genre affinity, ${r2.neighbor_count} neighbors)`,
+                  `✓ Complete — ${r2.recs_stored} recs (${r2.neighbor_recs} neighbor, ${r2.genre_affinity_recs} genre affinity)`,
                   'ok'
                 );
               } else {
@@ -1256,6 +1281,14 @@ async function panelRefreshRecs(phase = 'both') {
           if (_panelUser && (phase === 'matrix' || phase === 'both')) {
             loadPanelMatrixStatus(_panelUser.id);
           }
+          console.log('[Users] ▶ POLLING STOPPED — status:', s.status); // DEBUG
+        } else if (s.status === 'error') {
+          clearInterval(_panelRecsTimer);
+          _panelRecsTimer = null;
+          _panelRecLogTs(`✗ ERROR: ${s.errors?.[0]?.error || 'Unknown error'}`, 'error');
+          if (matrixBtn) { matrixBtn.disabled = false; }
+          if (recsBtn)   { recsBtn.disabled = false; }
+          console.log('[Users] ▶ POLLING STOPPED — status:', s.status); // DEBUG
         }
       } catch (e) {
         console.error('[Users] ✗ REFRESH RECS POLL error:', e);
