@@ -210,3 +210,259 @@ async function loadKeywordStats() {
     bar.textContent = `Error: ${e.message}`;
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   DIAGNOSTICS
+   ═══════════════════════════════════════════════════════ */
+
+const _diagConfig = {
+  kw: {
+    name:        'movies-without-keywords',
+    reportUrl:   '/admin/diagnostics/movies-without-keywords',
+    fixUrl:      '/admin/movies/fetch-keywords',
+    timeout:     2700000,  // 45 min
+    pollInterval: 2000,
+    countLabel:  n => `${n} missing keywords`,
+    renderItem:  item => item.title,
+    resultLine:  (r) => r.movie_title
+      ? `${r.status === 'ok' ? '✓' : '✗'} ${r.movie_title} — ${r.status === 'ok' ? `${r.keywords_found} keywords` : `error: ${r.error}`}`
+      : null,
+  },
+  sim: {
+    name:        'movies-without-similarities',
+    reportUrl:   '/admin/diagnostics/movies-without-similarities',
+    fixUrl:      '/admin/recommendations/precompute-movie-similarities',
+    timeout:     2700000,  // 45 min
+    pollInterval: 2000,
+    countLabel:  n => `${n} missing similarities`,
+    renderItem:  item => item.title,
+    resultLine:  (r) => r.movie_title
+      ? `${r.status === 'ok' ? '✓' : '✗'} ${r.movie_title} — ${r.status === 'ok' ? `${r.similar_found} similar found` : `error: ${r.error}`}`
+      : null,
+  },
+  mat: {
+    name:        'users-without-matrix',
+    reportUrl:   '/admin/diagnostics/users-without-matrix',
+    fixUrl:      '/admin/recommendations/refresh-all?phase=matrix',
+    timeout:     600000,   // 10 min
+    pollInterval: 1000,
+    countLabel:  n => `${n} without matrix`,
+    renderItem:  item => `${item.username} (${item.rating_count} ratings)`,
+    resultLine:  (r) => r.username
+      ? `${r.status === 'ok' ? '✓' : '✗'} ${r.username}${r.status === 'ok' ? ` — ${r.neighbor_count || 0} neighbors` : ` — ERROR: ${r.error}`}`
+      : null,
+  },
+  recs: {
+    name:        'users-without-recs',
+    reportUrl:   '/admin/diagnostics/users-without-recs',
+    fixUrl:      '/admin/recommendations/refresh-all?phase=recs',
+    timeout:     600000,   // 10 min
+    pollInterval: 1000,
+    countLabel:  n => `${n} without recs`,
+    renderItem:  item => `${item.username} (${item.rating_count} ratings)`,
+    resultLine:  (r) => r.username
+      ? `${r.status === 'ok' ? '✓' : '✗'} ${r.username}${r.status === 'ok' ? ` — ${r.recs_stored || 0} recs` : ` — ERROR: ${r.error}`}`
+      : null,
+  },
+};
+
+const _diagTimers = { kw: null, sim: null, mat: null, recs: null };
+
+/* ─── DIAG LOG HELPERS ───────────────────────────────────────────────── */
+function _diagLog(key, text, type = 'info') {
+  const cons = document.getElementById(`diag-${key}-log-console`);
+  const body = document.getElementById(`diag-${key}-log-body`);
+  if (!body) return;
+  cons.style.display = 'block';
+  const line = document.createElement('div');
+  line.className = `rec-log-line ${type}`;
+  line.textContent = text;
+  body.appendChild(line);
+  body.scrollTop = body.scrollHeight;
+}
+
+function _diagLogTs(key, text, type = 'info') {
+  _diagLog(key, `[${_reTs()}] ${text}`, type);
+}
+
+function closeDiagLog(key) {
+  const el = document.getElementById(`diag-${key}-log-console`);
+  if (el) el.style.display = 'none';
+}
+
+async function copyDiagLog(key) {
+  const body = document.getElementById(`diag-${key}-log-body`);
+  const btn  = document.getElementById(`diag-${key}-log-copy-btn`);
+  if (!body || !btn) return;
+  const text = Array.from(body.querySelectorAll('.rec-log-line'))
+    .map(el => el.textContent).join('\n');
+  try {
+    await navigator.clipboard.writeText(text);
+    btn.textContent = '✓ Copied';
+    setTimeout(() => { btn.textContent = '📋'; }, 1800);
+  } catch {
+    btn.textContent = '✗';
+    setTimeout(() => { btn.textContent = '📋'; }, 1800);
+  }
+}
+
+/* ─── RUN DIAGNOSTIC REPORT ──────────────────────────────────────────── */
+async function runDiagReport(key) {
+  const cfg       = _diagConfig[key];
+  const badge     = document.getElementById(`diag-${key}-badge`);
+  const list      = document.getElementById(`diag-${key}-list`);
+  const fixBtn    = document.getElementById(`diag-${key}-fix-btn`);
+  const reportBtn = document.getElementById(`diag-${key}-report-btn`);
+
+  console.log('[Diagnostics] ▶ running report:', cfg.name); // DEBUG
+  if (reportBtn) { reportBtn.disabled = true; reportBtn.textContent = 'Running…'; }
+  if (badge) { badge.style.display = 'none'; }
+
+  try {
+    const data = await api(cfg.reportUrl);
+    console.log('[Diagnostics] ▶ report result:', data); // DEBUG
+
+    if (!data) throw new Error('No response from server');
+
+    const count = data.count || 0;
+    const items = data.items || [];
+
+    // Update badge
+    if (badge) {
+      badge.style.display = 'inline-block';
+      if (count === 0) {
+        badge.style.background = '#2e7d32';
+        badge.style.color = '#fff';
+        badge.textContent = '✓ All good';
+      } else {
+        badge.style.background = '#c0392b';
+        badge.style.color = '#fff';
+        badge.textContent = cfg.countLabel(count);
+      }
+    }
+
+    // Update list
+    if (list) {
+      if (items.length === 0) {
+        list.style.display = 'none';
+      } else {
+        list.style.display = 'block';
+        list.innerHTML = items.map(item => `<div>${esc(cfg.renderItem(item))}</div>`).join('');
+        if (count > items.length) {
+          list.innerHTML += `<div style="color:var(--text-muted);font-style:italic">… and ${count - items.length} more</div>`;
+        }
+      }
+    }
+
+    // Show fix button only if there are items to fix
+    if (fixBtn) fixBtn.style.display = count > 0 ? 'inline-flex' : 'none';
+
+  } catch (e) {
+    if (badge) {
+      badge.style.display = 'inline-block';
+      badge.style.background = '#555';
+      badge.style.color = '#fff';
+      badge.textContent = `Error`;
+    }
+    console.error('[Diagnostics] ✗ report error:', e.message); // DEBUG
+  } finally {
+    if (reportBtn) { reportBtn.disabled = false; reportBtn.textContent = 'Run Report'; }
+  }
+}
+
+function runAllDiagReports() {
+  console.log('[Diagnostics] ▶ running report:', 'all'); // DEBUG
+  ['kw', 'sim', 'mat', 'recs'].forEach(key => runDiagReport(key));
+}
+
+/* ─── TRIGGER DIAGNOSTIC FIX ─────────────────────────────────────────── */
+async function triggerDiagFix(key) {
+  const cfg    = _diagConfig[key];
+  const fixBtn = document.getElementById(`diag-${key}-fix-btn`);
+
+  console.log('[Diagnostics] ▶ fix triggered:', cfg.name); // DEBUG
+  if (fixBtn) fixBtn.disabled = true;
+
+  // Clear and open log
+  const logBody = document.getElementById(`diag-${key}-log-body`);
+  if (logBody) logBody.innerHTML = '';
+
+  _diagLog(key, '═══════════════════════════════════════', 'header');
+  _diagLog(key, `  ${cfg.name.toUpperCase()} — FIX — ${new Date().toLocaleString()}`, 'header');
+  _diagLog(key, '═══════════════════════════════════════', 'header');
+  _diagLogTs(key, '▶ Sending fix request to server…', 'info');
+
+  try {
+    const data = await api(cfg.fixUrl, { method: 'POST' });
+    if (!data) {
+      _diagLogTs(key, '✗ No response from server', 'error');
+      if (fixBtn) fixBtn.disabled = false;
+      return;
+    }
+
+    const { job_id } = data;
+    _diagLogTs(key, `✓ Job queued  (id: ${job_id})`, 'ok');
+    _diagLogTs(key, '○ Polling for progress…', 'info');
+
+    const loggedIndices = new Set();
+    const loggedUsers   = new Set();
+    const pollStart     = Date.now();
+
+    if (_diagTimers[key]) clearInterval(_diagTimers[key]);
+    _diagTimers[key] = setInterval(async () => {
+      if (Date.now() - pollStart > cfg.timeout) {
+        clearInterval(_diagTimers[key]);
+        _diagTimers[key] = null;
+        _diagLogTs(key, `✗ Timed out — job may still be running in background. Check Railway logs.`, 'error');
+        if (fixBtn) fixBtn.disabled = false;
+        return;
+      }
+
+      try {
+        const s = await api(`/admin/recommendations/refresh-status/${job_id}`);
+        if (!s) return;
+
+        // Per-item result lines (index-keyed for keywords/sim, username-keyed for matrix/recs)
+        if (s.results && s.results.length > 0) {
+          s.results.forEach((r, idx) => {
+            const lineKey = r.username ? `${r.username}_${r.phase || ''}` : idx;
+            const tracked = r.username ? loggedUsers : loggedIndices;
+            if (!tracked.has(lineKey)) {
+              tracked.add(lineKey);
+              const line = cfg.resultLine(r, s);
+              if (line) _diagLog(key, `[${_reTs()}] ${line}`, r.status === 'ok' ? 'ok' : 'error');
+            }
+          });
+        }
+
+        if (s.status === 'complete' || s.status === 'error') {
+          clearInterval(_diagTimers[key]);
+          _diagTimers[key] = null;
+          _diagLog(key, '───────────────────────────────────────', 'header');
+
+          if (s.status === 'complete') {
+            const result = s.result || {};
+            const processed = result.processed ?? s.processed ?? 0;
+            const errors    = result.errors    ?? (s.errors ? s.errors.length : 0);
+            _diagLogTs(key, `✓ Complete — ${processed} processed, ${errors} errors`, 'ok');
+          } else {
+            _diagLogTs(key, `✗ Job failed: ${s.errors?.[0]?.error || 'Unknown error'}`, 'error');
+          }
+
+          _diagLog(key, '═══════════════════════════════════════', 'header');
+          if (fixBtn) fixBtn.disabled = false;
+
+          // Refresh the report badge after fix
+          runDiagReport(key);
+        }
+      } catch (e) {
+        console.error(`[Diagnostics] ✗ poll error (${key}):`, e.message); // DEBUG
+        _diagLogTs(key, `✗ Poll error: ${e.message}`, 'error');
+      }
+    }, cfg.pollInterval);
+
+  } catch (e) {
+    _diagLogTs(key, `✗ Failed to start: ${e.message}`, 'error');
+    if (fixBtn) fixBtn.disabled = false;
+  }
+}
