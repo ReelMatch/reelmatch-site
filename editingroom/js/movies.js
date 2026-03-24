@@ -548,6 +548,7 @@ function renderMoviePanel(data) {
                </div>
                <div id="movie-panel-sim-more" style="display:none">${simRest.map(simLine).join('')}</div>` : ''}
           `}
+        </div>
       </div>
 
       <!-- STREAMING -->
