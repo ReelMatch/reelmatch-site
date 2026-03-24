@@ -314,10 +314,110 @@ async function startRecsRefresh(phase = 'both') {
 }
 
 function _enableRecsButtons() {
-  ['recs-matrix-btn', 'recs-compute-btn', 'recs-refresh-btn'].forEach(id => {
+  ['recs-matrix-btn', 'recs-compute-btn', 'recs-sim-btn', 'recs-refresh-btn'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.disabled = false;
   });
+}
+
+/* ─── MOVIE SIMILARITY PRECOMPUTATION ────────────────────────────────── */
+let _simPrecomputeTimer = null;
+
+async function startSimPrecompute() {
+  const btn      = document.getElementById('recs-sim-btn');
+  const progress = document.getElementById('recs-refresh-progress');
+  const fill     = document.getElementById('recs-progress-fill');
+  const msg      = document.getElementById('recs-refresh-msg');
+
+  // Disable all rec engine buttons while running
+  ['recs-matrix-btn', 'recs-compute-btn', 'recs-sim-btn', 'recs-refresh-btn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = true;
+  });
+  progress.style.display = 'block';
+  fill.style.width = '0%';
+  msg.style.color = 'var(--text-muted)';
+  msg.textContent = 'Starting similarity precomputation…';
+
+  clearRecLog();
+  recLog('═══════════════════════════════════════', 'header');
+  recLog(`  REC ENGINE — MOVIE SIMILARITIES — ${new Date().toLocaleString()}`, 'header');
+  recLog('═══════════════════════════════════════', 'header');
+  recLogTs('▶ Sending precompute request to server…', 'info');
+
+  try {
+    const data = await api('/admin/recommendations/precompute-movie-similarities', { method: 'POST' });
+    if (!data) {
+      _enableRecsButtons();
+      recLogTs('✗ No response from server', 'error');
+      return;
+    }
+    const { job_id, total_movies } = data;
+    recLogTs(`✓ Job queued  (id: ${job_id})`, 'ok');
+    recLogTs(`── Processing ${total_movies || '…'} movies…`, 'info');
+    msg.textContent = 'Precomputing…';
+
+    const pollStartTime = Date.now();
+    if (_simPrecomputeTimer) clearInterval(_simPrecomputeTimer);
+    _simPrecomputeTimer = setInterval(async () => {
+      console.log('[Dashboard] ▶ SIM POLL TICK — job_id:', job_id); // DEBUG
+
+      if (Date.now() - pollStartTime > 180000) {
+        clearInterval(_simPrecomputeTimer);
+        _simPrecomputeTimer = null;
+        recLogTs('✗ Timed out after 3 minutes — job may still be running in background. Check Railway logs.', 'error');
+        _enableRecsButtons();
+        console.log('[Dashboard] ▶ POLLING STOPPED — status: timeout'); // DEBUG
+        return;
+      }
+
+      try {
+        const s = await api(`/admin/recommendations/refresh-status/${job_id}`);
+        if (!s) return;
+        console.log('[Dashboard] ▶ SIM STATUS:', JSON.stringify(s)); // DEBUG
+
+        if (s.status === 'complete' || s.status === 'error') {
+          clearInterval(_simPrecomputeTimer);
+          _simPrecomputeTimer = null;
+          console.log('[Dashboard] ▶ POLLING STOPPED — status:', s.status); // DEBUG
+
+          if (s.status === 'complete') {
+            const result = s.result || {};
+            fill.style.width = '100%';
+            msg.style.color = '#81c784';
+            msg.textContent = `✓ Done — ${result.processed || 0} movies processed`;
+            recLog('───────────────────────────────────────', 'header');
+            recLogTs(`✓ Complete — ${result.processed || 0} movies processed, ${result.errors || 0} errors`, 'ok');
+
+            // Fetch and display similarity stats
+            try {
+              const stats = await api('/admin/recommendations/movie-similarity-stats');
+              if (stats) {
+                recLogTs(`── Stats: ${stats.total_movies_with_similarities} movies with similarities, avg ${stats.avg_similar_per_movie} similar per movie`, 'info');
+              }
+            } catch (e) {
+              console.warn('[Dashboard] ✗ Failed to fetch similarity stats:', e.message); // DEBUG
+            }
+          } else {
+            msg.style.color = '#e57373';
+            msg.textContent = `✗ Error: ${s.error || 'Unknown error'}`;
+            recLog('───────────────────────────────────────', 'header');
+            recLogTs(`✗ Job failed: ${s.error || 'Unknown error'}`, 'error');
+          }
+          recLog('═══════════════════════════════════════', 'header');
+          _enableRecsButtons();
+        }
+      } catch (e) {
+        console.error('[Dashboard] ✗ SIM POLL error:', e.message); // DEBUG
+        recLogTs(`✗ Poll error: ${e.message}`, 'error');
+      }
+    }, 2000);
+  } catch (e) {
+    msg.style.color = '#e57373';
+    msg.textContent = `✗ Failed to start: ${e.message}`;
+    recLogTs(`✗ Failed to start job: ${e.message}`, 'error');
+    _enableRecsButtons();
+  }
 }
 
 function skeletonHTML() {
