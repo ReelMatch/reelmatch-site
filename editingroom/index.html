@@ -151,6 +151,34 @@
           </div>
           <div class="rec-log-body" id="recs-log-body"></div>
         </div>
+      <!-- Content Engine — keyword fetch -->
+      <div class="recs-refresh-card" style="margin-top:12px">
+        <div class="recs-refresh-row">
+          <div>
+            <div class="stat-label">Content Engine</div>
+            <div class="stat-sublabel" style="margin-top:2px">Enrich movie catalogue with TMDB metadata</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+            <button class="btn btn-ghost btn-sm" id="keywords-fetch-btn" onclick="startKeywordFetch()" title="Fetch TMDB keywords for all movies missing keyword data">🔑 Fetch TMDB Keywords</button>
+          </div>
+        </div>
+        <div id="keywords-fetch-progress" style="display:none">
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" id="keywords-progress-fill"></div>
+          </div>
+          <div class="recs-refresh-msg" id="keywords-refresh-msg"></div>
+        </div>
+        <!-- Keyword fetch log console -->
+        <div id="keywords-log-console" class="rec-log-console" style="display:none">
+          <div class="rec-log-header">
+            <span>Content Engine Log</span>
+            <div class="rec-log-actions">
+              <button id="keywords-log-copy-btn" class="rec-log-btn" onclick="copyKeywordsLog()" title="Copy log">📋</button>
+              <button class="rec-log-btn" onclick="closeKeywordsLog()" title="Close">×</button>
+            </div>
+          </div>
+          <div class="rec-log-body" id="keywords-log-body"></div>
+        </div>
       </div>
     </div>
 
