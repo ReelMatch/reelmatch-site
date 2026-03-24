@@ -357,15 +357,16 @@ async function startSimPrecompute() {
     recLogTs(`── Processing ${total_movies || '…'} movies…`, 'info');
     msg.textContent = 'Precomputing…';
 
+    const loggedIndices = new Set();
     const pollStartTime = Date.now();
     if (_simPrecomputeTimer) clearInterval(_simPrecomputeTimer);
     _simPrecomputeTimer = setInterval(async () => {
       console.log('[Dashboard] ▶ SIM POLL TICK — job_id:', job_id); // DEBUG
 
-      if (Date.now() - pollStartTime > 180000) {
+      if (Date.now() - pollStartTime > 2700000) {
         clearInterval(_simPrecomputeTimer);
         _simPrecomputeTimer = null;
-        recLogTs('✗ Timed out after 3 minutes — job may still be running in background. Check Railway logs.', 'error');
+        recLogTs('✗ Timed out after 45 minutes — job may still be running in background. Check Railway logs.', 'error');
         _enableRecsButtons();
         console.log('[Dashboard] ▶ POLLING STOPPED — status: timeout'); // DEBUG
         return;
@@ -375,6 +376,27 @@ async function startSimPrecompute() {
         const s = await api(`/admin/recommendations/refresh-status/${job_id}`);
         if (!s) return;
         console.log('[Dashboard] ▶ SIM STATUS:', JSON.stringify(s)); // DEBUG
+
+        // Show per-movie progress lines as they arrive
+        if (s.results && s.results.length > 0) {
+          s.results.forEach((r, idx) => {
+            if (!loggedIndices.has(idx)) {
+              loggedIndices.add(idx);
+              const icon = r.status === 'ok' ? '✓' : '✗';
+              const detail = r.status === 'ok'
+                ? `${r.similar_found} similar found`
+                : `error: ${r.error}`;
+              recLog(`[${_logTs()}] ${icon} ${r.movie_title} — ${detail} (${r.current}/${s.total})`, r.status === 'ok' ? 'ok' : 'error');
+            }
+          });
+        }
+
+        // Update progress bar and header line each poll
+        if (s.processed > 0 && s.total > 0) {
+          const pct = Math.round((s.processed / s.total) * 100);
+          fill.style.width = `${pct}%`;
+          msg.textContent = `Processing movies… ${s.processed}/${s.total} (${pct}%)`;
+        }
 
         if (s.status === 'complete' || s.status === 'error') {
           clearInterval(_simPrecomputeTimer);
@@ -393,7 +415,7 @@ async function startSimPrecompute() {
             try {
               const stats = await api('/admin/recommendations/movie-similarity-stats');
               if (stats) {
-                recLogTs(`── Stats: ${stats.total_movies_with_similarities} movies with similarities, avg ${stats.avg_similar_per_movie} similar per movie`, 'info');
+                recLogTs(`── ${stats.total_movies_with_similarities} movies indexed, avg ${stats.avg_similar_per_movie} similar per movie`, 'info');
               }
             } catch (e) {
               console.warn('[Dashboard] ✗ Failed to fetch similarity stats:', e.message); // DEBUG
