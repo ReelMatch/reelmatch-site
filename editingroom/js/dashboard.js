@@ -661,5 +661,6 @@ function startDashAutoRefresh() {
   if (_dashInterval) clearInterval(_dashInterval);
   _dashInterval = setInterval(() => {
     if (state.section === 'dashboard') loadDashboard();
+    // recengine section has no auto-refresh — actions are on-demand
   }, 30000);
 }
