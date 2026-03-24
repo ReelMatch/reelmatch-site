@@ -694,6 +694,12 @@
 <!-- ═══════════════ TOAST CONTAINER ══════════════════════════════════ -->
 <div id="toast-container"></div>
 
+<!-- ═══════════════ MOVIE DETAIL PANEL ═══════════════════════════════ -->
+<div id="movie-detail-overlay" onclick="closeMoviePanel()" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999"></div>
+<div id="movie-detail-panel" style="display:none;position:fixed;right:0;top:0;width:800px;max-width:100vw;height:100vh;background:var(--bg-surface);box-shadow:-4px 0 24px rgba(0,0,0,0.5);overflow-y:auto;z-index:1000;transform:translateX(100%);transition:transform 0.3s ease">
+  <div id="movie-detail-content"></div>
+</div>
+
 <!-- ═══════════════ USER DETAIL PANEL ════════════════════════════════ -->
 <div id="panel-overlay" onclick="closeUserPanel()"></div>
 <div id="user-panel">
