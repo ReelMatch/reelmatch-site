@@ -125,6 +125,114 @@
 
     </div>
 
+    <!-- ── RECENGINE ────────────────────────────────────────────── -->
+    <div class="section" id="sec-recengine">
+      <div class="dash-header">
+        <div>
+          <h1 class="section-title">Recommendation Engine</h1>
+          <div class="section-subtitle">ML pipeline controls and content enrichment</div>
+        </div>
+      </div>
+
+      <!-- Sub-section: User Matrices & Recs -->
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin:0 0 10px">User Matrices &amp; Recs</div>
+      <div class="recs-refresh-card">
+        <div class="recs-refresh-row">
+          <div>
+            <div class="stat-label">Recommendations Engine</div>
+            <div class="stat-sublabel" style="margin-top:2px">Regenerate predictions for all active users</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+            <button class="btn btn-ghost btn-sm" id="recs-matrix-btn" onclick="startRecsRefresh('matrix')" title="Build matrices for users with pending status">⬡ Build Pending Matrices</button>
+            <button class="btn btn-ghost btn-sm" id="recs-compute-btn" onclick="startRecsRefresh('recs')" title="Recompute recommendations for all users">◈ Recompute All Recs</button>
+            <button class="btn btn-ghost btn-sm" id="recs-sim-btn" onclick="startSimPrecompute()" title="Precompute movie-to-movie similarity scores">⧫ Precompute Similarities</button>
+            <button class="btn btn-primary btn-sm" id="recs-refresh-btn" onclick="startRecsRefresh('both')" title="Full two-phase refresh for all users">⟳ Full Refresh (Both Phases)</button>
+          </div>
+        </div>
+        <div id="recs-refresh-progress" style="display:none">
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" id="recs-progress-fill"></div>
+          </div>
+          <div class="recs-refresh-msg" id="recs-refresh-msg"></div>
+        </div>
+        <div id="recs-log-console" class="rec-log-console" style="display:none">
+          <div class="rec-log-header">
+            <span>Rec Engine Log</span>
+            <div class="rec-log-actions">
+              <button id="recs-log-copy-btn" class="rec-log-btn" onclick="copyRecLog()" title="Copy log">📋</button>
+              <button class="rec-log-btn" onclick="closeRecLog()" title="Close">×</button>
+            </div>
+          </div>
+          <div class="rec-log-body" id="recs-log-body"></div>
+        </div>
+      </div>
+
+      <!-- Sub-section: Movie Similarities -->
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin:20px 0 10px">Movie Similarities</div>
+      <div class="recs-refresh-card">
+        <div class="recs-refresh-row">
+          <div>
+            <div class="stat-label">Item-Item Similarity</div>
+            <div class="stat-sublabel" style="margin-top:2px">Precompute movie-to-movie cosine similarity scores for fast item-item CF</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+            <button class="btn btn-ghost btn-sm" id="sim-stats-btn" onclick="loadSimStats()">↺ Stats</button>
+            <button class="btn btn-ghost btn-sm" id="sim-precompute-btn" onclick="startSimPrecomputeRE()" title="Precompute movie-to-movie similarity scores">⧫ Precompute Similarities</button>
+          </div>
+        </div>
+        <div id="sim-stats-bar" style="font-size:12px;color:var(--text-muted);margin-top:8px;display:none"></div>
+        <div id="sim-refresh-progress" style="display:none">
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" id="sim-progress-fill"></div>
+          </div>
+          <div class="recs-refresh-msg" id="sim-refresh-msg"></div>
+        </div>
+        <div id="sim-log-console" class="rec-log-console" style="display:none">
+          <div class="rec-log-header">
+            <span>Similarities Log</span>
+            <div class="rec-log-actions">
+              <button id="sim-log-copy-btn" class="rec-log-btn" onclick="copySimLog()" title="Copy log">📋</button>
+              <button class="rec-log-btn" onclick="closeSimLog()" title="Close">×</button>
+            </div>
+          </div>
+          <div class="rec-log-body" id="sim-log-body"></div>
+        </div>
+      </div>
+
+      <!-- Sub-section: Content Engine -->
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin:20px 0 10px">Content Engine</div>
+      <div class="recs-refresh-card">
+        <div class="recs-refresh-row">
+          <div>
+            <div class="stat-label">Content Engine</div>
+            <div class="stat-sublabel" style="margin-top:2px">Enrich movie catalogue with TMDB metadata</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+            <button class="btn btn-ghost btn-sm" id="keywords-stats-btn" onclick="loadKeywordStats()">↺ Stats</button>
+            <button class="btn btn-ghost btn-sm" id="keywords-fetch-btn" onclick="startKeywordFetch()" title="Fetch TMDB keywords for all movies missing keyword data">🔑 Fetch TMDB Keywords</button>
+          </div>
+        </div>
+        <div id="keywords-stats-bar" style="font-size:12px;color:var(--text-muted);margin-top:8px;display:none"></div>
+        <div id="keywords-fetch-progress" style="display:none">
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" id="keywords-progress-fill"></div>
+          </div>
+          <div class="recs-refresh-msg" id="keywords-refresh-msg"></div>
+        </div>
+        <div id="keywords-log-console" class="rec-log-console" style="display:none">
+          <div class="rec-log-header">
+            <span>Content Engine Log</span>
+            <div class="rec-log-actions">
+              <button id="keywords-log-copy-btn" class="rec-log-btn" onclick="copyKeywordsLog()" title="Copy log">📋</button>
+              <button class="rec-log-btn" onclick="closeKeywordsLog()" title="Close">×</button>
+            </div>
+          </div>
+          <div class="rec-log-body" id="keywords-log-body"></div>
+        </div>
+      </div>
+
+    </div>
+
     <!-- ── USERS ──────────────────────────────────────────────────── -->
     <div class="section" id="sec-users">
       <div class="section-header">
