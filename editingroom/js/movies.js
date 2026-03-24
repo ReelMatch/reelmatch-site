@@ -233,7 +233,7 @@ function renderMoviesHealthTable(movies, subtitle, showDate = false) {
         </tr></thead>
         <tbody>
           ${movies.map(m => `
-          <tr>
+          <tr${m.id ? ` style="cursor:pointer" onclick="if(!event.target.closest('button,a,input'))openMoviePanel('${m.id}')"` : ''}>
             <td style="padding-right:0">
               <input type="checkbox" class="movie-row-cb" value="${m.tmdb_id}"
                      onchange="toggleMovieSelect(${m.tmdb_id}, this.checked)" />
@@ -252,6 +252,7 @@ function renderMoviesHealthTable(movies, subtitle, showDate = false) {
             ${showDate ? `<td style="font-size:12px;color:var(--text-muted)">${m.created_at ? formatDate(m.created_at) : '—'}</td>` : ''}
             <td>
               <div style="display:flex;gap:6px">
+                ${m.id ? `<button class="btn btn-ghost btn-sm" onclick="openMoviePanel('${m.id}')">Detail</button>` : ''}
                 <button class="btn btn-ghost btn-sm" onclick="confirmRefreshMovie(${m.tmdb_id}, '${esc(m.title).replace(/'/g,"\\'")}')">⟳ Re-cache</button>
                 <button class="btn btn-danger btn-sm" onclick="confirmDeleteMovie(${m.tmdb_id}, '${esc(m.title).replace(/'/g,"\\'")}')">Delete</button>
                 <a href="https://www.themoviedb.org/movie/${m.tmdb_id}" target="_blank" class="btn btn-ghost btn-sm">TMDB ↗</a>
