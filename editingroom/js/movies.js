@@ -484,7 +484,7 @@ function renderMoviePanel(data) {
           ${genres.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:7px">${genres.map(g => `<span style="font-size:11px;padding:2px 8px;background:var(--bg-hover);border:1px solid var(--border);border-radius:10px">${esc(g)}</span>`).join('')}</div>` : ''}
           ${m.tagline ? `<div style="font-style:italic;font-size:12px;color:var(--text-muted);margin-bottom:6px">"${esc(m.tagline)}"</div>` : ''}
           <div style="font-size:11px;color:var(--text-muted);line-height:1.8">
-            TMDB: ${m.tmdb_id || '—'} &nbsp;|&nbsp; ID: ${m.id ? `${m.id.slice(0,8)}…` : '—'}<br/>
+            ${m.rm_id != null ? `RMID: <strong style="color:var(--text-primary)">${m.rm_id}</strong> &nbsp;|&nbsp; ` : ''}TMDB: ${m.tmdb_id || '—'} &nbsp;|&nbsp; ID: <span style="user-select:all;font-family:monospace">${m.id || '—'}</span><br/>
             Cached: ${m.cached_at ? formatDate(m.cached_at) : '—'} &nbsp;|&nbsp; Popularity: ${m.popularity != null ? Number(m.popularity).toFixed(1) : '—'}
           </div>
         </div>
