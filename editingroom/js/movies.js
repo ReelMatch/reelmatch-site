@@ -521,16 +521,19 @@ function renderMoviePanel(data) {
 
       <!-- KEYWORDS -->
       <div style="margin-bottom:22px;border-top:1px solid var(--border);padding-top:16px">
-        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:8px">Keywords (${data.keywords_count || 0})</div>
-        ${keywords.length
-          ? `<div style="display:flex;flex-wrap:wrap;gap:5px">${keywords.map(k =>
-              `<span style="font-size:11px;padding:2px 8px;background:var(--bg-surface);border:1px solid var(--border);border-radius:10px">${esc(k.name)}</span>`
-            ).join('')}</div>`
-          : `<div style="font-size:13px;color:var(--text-muted)">No keywords fetched yet</div>`}
+        <div id="movie-panel-kw-section">
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:8px">Keywords (${data.keywords_count || 0})</div>
+          ${keywords.length
+            ? `<div style="display:flex;flex-wrap:wrap;gap:5px">${keywords.map(k =>
+                `<span style="font-size:11px;padding:2px 8px;background:var(--bg-surface);border:1px solid var(--border);border-radius:10px">${esc(k.name)}</span>`
+              ).join('')}</div>`
+            : `<div style="font-size:13px;color:var(--text-muted)">No keywords fetched yet</div>`}
+        </div>
       </div>
 
       <!-- SIMILAR MOVIES -->
       <div style="margin-bottom:22px;border-top:1px solid var(--border);padding-top:16px">
+        <div id="movie-panel-sim-section">
         <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:8px">Similar Movies (${data.similar_movies_count || 0} computed)</div>
         ${similar.length === 0
           ? `<div style="font-size:13px;color:var(--text-muted)">Similarities not yet computed</div>`
