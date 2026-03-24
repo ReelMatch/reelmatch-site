@@ -206,13 +206,24 @@ async function startRecsRefresh(phase = 'both') {
     msg.textContent = 'Processing…';
 
     let _lastProcessed = -1;
-    let _lastResults = 0;
     let _loggedPhase1 = false;
     let _loggedPhase2 = false;
+    const _loggedUsers = new Set();
+    const pollStartTime = Date.now();
 
     if (_recsRefreshTimer) clearInterval(_recsRefreshTimer);
     _recsRefreshTimer = setInterval(async () => {
       console.log('[RecConsole] ▶ POLL TICK — job_id:', job_id); // DEBUG
+
+      if (Date.now() - pollStartTime > 180000) {
+        clearInterval(_recsRefreshTimer);
+        _recsRefreshTimer = null;
+        recLogTs('✗ Timed out after 3 minutes — job may still be running in background. Check Railway logs.', 'error');
+        _enableRecsButtons();
+        console.log('[Dashboard] ▶ POLLING STOPPED — status: timeout'); // DEBUG
+        return;
+      }
+
       try {
         const s = await api(`/admin/recommendations/refresh-status/${job_id}`);
         if (!s) { return; }
@@ -227,10 +238,12 @@ async function startRecsRefresh(phase = 'both') {
           _lastProcessed = s.processed;
         }
 
-        // Log new per-user results as they arrive
-        if (s.results && s.results.length > _lastResults) {
-          for (let i = _lastResults; i < s.results.length; i++) {
-            const r = s.results[i];
+        // Log new per-user results as they arrive, tracked by username+phase Set
+        if (s.results && s.results.length > 0) {
+          const newResults = s.results.filter(r => !_loggedUsers.has(`${r.username}_${r.phase}`));
+          console.log('[Dashboard] ▶ NEW USER RESULTS to log:', newResults.length); // DEBUG
+          for (const r of newResults) {
+            _loggedUsers.add(`${r.username}_${r.phase}`);
             console.log('[RecConsole] ▶ USER RESULT:', r.username, r.phase, r.status); // DEBUG
 
             // Insert phase separator headers on first result of each phase
@@ -256,7 +269,6 @@ async function startRecsRefresh(phase = 'both') {
               recLogTs(`✗ ${r.username} — ERROR: ${r.error}`, 'error');
             }
           }
-          _lastResults = s.results.length;
         }
 
         if (s.status === 'complete') {
@@ -275,6 +287,7 @@ async function startRecsRefresh(phase = 'both') {
           }
           recLog('═══════════════════════════════════════', 'header');
           _enableRecsButtons();
+          console.log('[Dashboard] ▶ POLLING STOPPED — status:', s.status); // DEBUG
 
         } else if (s.status === 'error') {
           clearInterval(_recsRefreshTimer);
@@ -285,6 +298,7 @@ async function startRecsRefresh(phase = 'both') {
           recLogTs(`✗ Job failed: ${s.errors[0]?.error || 'Unknown error'}`, 'error');
           recLog('═══════════════════════════════════════', 'header');
           _enableRecsButtons();
+          console.log('[Dashboard] ▶ POLLING STOPPED — status:', s.status); // DEBUG
         }
       } catch (e) {
         console.error('[RecConsole] ✗ POLL error:', e.message); // DEBUG
