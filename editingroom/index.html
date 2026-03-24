@@ -130,6 +130,7 @@
           <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
             <button class="btn btn-ghost btn-sm" id="recs-matrix-btn" onclick="startRecsRefresh('matrix')" title="Build matrices for users with pending status">⬡ Build Pending Matrices</button>
             <button class="btn btn-ghost btn-sm" id="recs-compute-btn" onclick="startRecsRefresh('recs')" title="Recompute recommendations for all users">◈ Recompute All Recs</button>
+            <button class="btn btn-ghost btn-sm" id="recs-sim-btn" onclick="startSimPrecompute()" title="Precompute movie-to-movie similarity scores">⧫ Precompute Similarities</button>
             <button class="btn btn-primary btn-sm" id="recs-refresh-btn" onclick="startRecsRefresh('both')" title="Full two-phase refresh for all users">⟳ Full Refresh (Both Phases)</button>
           </div>
         </div>
