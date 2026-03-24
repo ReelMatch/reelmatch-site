@@ -60,8 +60,9 @@ async function renderMoviesTable(movies) {
             const key = String(m.tmdb_id || m.id || '');
             const rm = rmStats[key];
             const rmCell = rm ? `${rm.avg.toFixed(1)} <span style="color:var(--accent)">★</span> <span style="color:var(--text-muted);font-size:11px">(${rm.count})</span>` : '—';
+            const rowClick = m.id ? `onclick="if(!event.target.closest('button,a'))openMoviePanel('${m.id}')"` : '';
             return `
-            <tr style="height:64px">
+            <tr style="height:64px;${m.id ? 'cursor:pointer' : ''}" ${rowClick}>
               <td style="padding-top:0;padding-bottom:0">
                 <div style="display:flex;align-items:center;gap:10px;height:100%">
                   ${m.poster_path ? `<img src="https://image.tmdb.org/t/p/w92${m.poster_path}" style="width:auto;height:60px;object-fit:cover;border-radius:3px;flex-shrink:0" />` : '<div style="width:40px;height:60px;background:var(--bg-hover);border-radius:3px;flex-shrink:0"></div>'}
@@ -74,6 +75,7 @@ async function renderMoviesTable(movies) {
               <td>${m.vote_average ? `${Number(m.vote_average).toFixed(1)} <span style="color:var(--accent)">★</span>` : '—'}</td>
               <td>${rmCell}</td>
               <td>
+                ${m.id ? `<button class="btn btn-ghost btn-sm" onclick="openMoviePanel('${m.id}')">Detail</button>` : ''}
                 <a href="https://www.themoviedb.org/movie/${m.tmdb_id||m.id}" target="_blank" class="btn btn-ghost btn-sm">TMDB ↗</a>
               </td>
             </tr>`;
