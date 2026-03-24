@@ -442,6 +442,166 @@ async function startSimPrecompute() {
   }
 }
 
+/* ─── KEYWORD FETCH ──────────────────────────────────────────────────── */
+let _keywordFetchTimer = null;
+
+function keywordsLog(text, type = 'info') {
+  const cons = document.getElementById('keywords-log-console');
+  const body = document.getElementById('keywords-log-body');
+  if (!body) return;
+  cons.style.display = 'block';
+  const line = document.createElement('div');
+  line.className = `rec-log-line ${type}`;
+  line.textContent = text;
+  body.appendChild(line);
+  body.scrollTop = body.scrollHeight;
+}
+
+function keywordsLogTs(text, type = 'info') {
+  keywordsLog(`[${_logTs()}] ${text}`, type);
+}
+
+function clearKeywordsLog() {
+  const body = document.getElementById('keywords-log-body');
+  if (body) body.innerHTML = '';
+}
+
+function closeKeywordsLog() {
+  document.getElementById('keywords-log-console').style.display = 'none';
+}
+
+async function copyKeywordsLog() {
+  const body = document.getElementById('keywords-log-body');
+  const btn  = document.getElementById('keywords-log-copy-btn');
+  if (!body || !btn) return;
+  const text = Array.from(body.querySelectorAll('.rec-log-line'))
+    .map(el => el.textContent).join('\n');
+  try {
+    await navigator.clipboard.writeText(text);
+    btn.textContent = '✓ Copied';
+    setTimeout(() => { btn.textContent = '📋'; }, 1800);
+  } catch {
+    btn.textContent = '✗';
+    setTimeout(() => { btn.textContent = '📋'; }, 1800);
+  }
+}
+
+async function startKeywordFetch() {
+  const btn      = document.getElementById('keywords-fetch-btn');
+  const progress = document.getElementById('keywords-fetch-progress');
+  const fill     = document.getElementById('keywords-progress-fill');
+  const msg      = document.getElementById('keywords-refresh-msg');
+
+  if (btn) btn.disabled = true;
+  progress.style.display = 'block';
+  fill.style.width = '0%';
+  msg.style.color = 'var(--text-muted)';
+  msg.textContent = 'Starting keyword fetch…';
+
+  clearKeywordsLog();
+  keywordsLog('═══════════════════════════════════════', 'header');
+  keywordsLog(`  CONTENT ENGINE — TMDB KEYWORDS — ${new Date().toLocaleString()}`, 'header');
+  keywordsLog('═══════════════════════════════════════', 'header');
+  keywordsLogTs('▶ Sending fetch request to server…', 'info');
+
+  try {
+    const data = await api('/admin/movies/fetch-keywords', { method: 'POST' });
+    if (!data) {
+      if (btn) btn.disabled = false;
+      keywordsLogTs('✗ No response from server', 'error');
+      return;
+    }
+    const { job_id, total_movies } = data;
+    keywordsLogTs(`✓ Job queued  (id: ${job_id})`, 'ok');
+    keywordsLogTs(`── Fetching keywords for ${total_movies || '…'} movies…`, 'info');
+    msg.textContent = 'Fetching…';
+
+    const loggedIndices = new Set();
+    const pollStartTime = Date.now();
+    if (_keywordFetchTimer) clearInterval(_keywordFetchTimer);
+    _keywordFetchTimer = setInterval(async () => {
+      console.log('[Dashboard] ▶ KEYWORDS POLL TICK — job_id:', job_id); // DEBUG
+
+      if (Date.now() - pollStartTime > 2700000) {
+        clearInterval(_keywordFetchTimer);
+        _keywordFetchTimer = null;
+        keywordsLogTs('✗ Timed out after 45 minutes — job may still be running in background. Check Railway logs.', 'error');
+        if (btn) btn.disabled = false;
+        console.log('[Dashboard] ▶ KEYWORDS POLLING STOPPED — status: timeout'); // DEBUG
+        return;
+      }
+
+      try {
+        const s = await api(`/admin/recommendations/refresh-status/${job_id}`);
+        if (!s) return;
+        console.log('[Dashboard] ▶ KEYWORDS STATUS:', JSON.stringify(s)); // DEBUG
+
+        // Show per-movie lines as they arrive
+        if (s.results && s.results.length > 0) {
+          s.results.forEach((r, idx) => {
+            if (!loggedIndices.has(idx)) {
+              loggedIndices.add(idx);
+              const icon = r.status === 'ok' ? '✓' : '✗';
+              const detail = r.status === 'ok'
+                ? `${r.keywords_found} keywords`
+                : `error: ${r.error}`;
+              keywordsLog(`[${_logTs()}] ${icon} ${r.movie_title} — ${detail} (${r.current}/${s.total})`, r.status === 'ok' ? 'ok' : 'error');
+            }
+          });
+        }
+
+        // Update progress bar each poll
+        if (s.processed > 0 && s.total > 0) {
+          const pct = Math.round((s.processed / s.total) * 100);
+          fill.style.width = `${pct}%`;
+          msg.textContent = `Fetching keywords… ${s.processed}/${s.total} (${pct}%)`;
+        }
+
+        if (s.status === 'complete' || s.status === 'error') {
+          clearInterval(_keywordFetchTimer);
+          _keywordFetchTimer = null;
+          if (btn) btn.disabled = false;
+          console.log('[Dashboard] ▶ KEYWORDS POLLING STOPPED — status:', s.status); // DEBUG
+
+          if (s.status === 'complete') {
+            const result = s.result || {};
+            fill.style.width = '100%';
+            msg.style.color = '#81c784';
+            msg.textContent = `✓ Done — ${result.processed || 0} movies processed`;
+            keywordsLog('───────────────────────────────────────', 'header');
+            keywordsLogTs(`✓ Complete — ${result.processed || 0} movies processed, ${result.errors || 0} errors, ${result.total_keywords || 0} total keywords`, 'ok');
+
+            // Fetch and display keyword stats
+            try {
+              const stats = await api('/admin/movies/keyword-stats');
+              if (stats) {
+                keywordsLogTs(`── ${stats.movies_with_keywords} movies with keywords, avg ${stats.avg_keywords_per_movie} per movie`, 'info');
+                keywordsLogTs(`── ${stats.movies_without_keywords} movies still without keywords`, 'info');
+              }
+            } catch (e) {
+              console.warn('[Dashboard] ✗ Failed to fetch keyword stats:', e.message); // DEBUG
+            }
+          } else {
+            msg.style.color = '#e57373';
+            msg.textContent = `✗ Error: ${s.error || 'Unknown error'}`;
+            keywordsLog('───────────────────────────────────────', 'header');
+            keywordsLogTs(`✗ Job failed: ${s.error || 'Unknown error'}`, 'error');
+          }
+          keywordsLog('═══════════════════════════════════════', 'header');
+        }
+      } catch (e) {
+        console.error('[Dashboard] ✗ KEYWORDS POLL error:', e.message); // DEBUG
+        keywordsLogTs(`✗ Poll error: ${e.message}`, 'error');
+      }
+    }, 2000);
+  } catch (e) {
+    msg.style.color = '#e57373';
+    msg.textContent = `✗ Failed to start: ${e.message}`;
+    keywordsLogTs(`✗ Failed to start job: ${e.message}`, 'error');
+    if (btn) btn.disabled = false;
+  }
+}
+
 function skeletonHTML() {
   const row = n => `<div class="skeleton-grid">${'<div class="skeleton-box"></div>'.repeat(n)}</div>`;
   return row(4) + row(4) + `<div class="skeleton-grid" style="grid-template-columns:1fr 1fr">${'<div class="skeleton-box" style="height:110px"></div>'.repeat(2)}</div>`;
