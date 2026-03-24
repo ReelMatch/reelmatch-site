@@ -566,3 +566,92 @@ function renderMoviePanel(data) {
 
     </div>`;
 }
+
+async function moviePanelFetchKeywords(movieId) {
+  const btn = document.getElementById('movie-panel-btn-keywords');
+  const msg = document.getElementById('movie-panel-action-msg');
+  if (!btn) return;
+  const orig = btn.innerHTML;
+  btn.innerHTML = '⟳ Fetching…';
+  btn.disabled = true;
+  msg.style.display = 'none';
+  try {
+    const data = await api(`/admin/movies/${movieId}/fetch-keywords`, { method: 'POST' });
+    if (!data) return;
+    msg.textContent = `✓ ${data.keywords_count} keywords fetched`;
+    msg.style.color = 'var(--success, #22c55e)';
+    msg.style.display = 'block';
+    // Re-render just the keywords section
+    const detail = await api(`/admin/movies/${movieId}/detail`);
+    if (detail) {
+      const keywords = detail.keywords || [];
+      const kwSection = document.getElementById('movie-panel-kw-section');
+      if (kwSection) {
+        const chips = keywords.length
+          ? `<div style="display:flex;flex-wrap:wrap;gap:5px">${keywords.map(k =>
+              `<span style="font-size:11px;padding:2px 8px;background:var(--bg-surface);border:1px solid var(--border);border-radius:10px">${esc(k.name)}</span>`
+            ).join('')}</div>`
+          : `<div style="font-size:13px;color:var(--text-muted)">No keywords fetched yet</div>`;
+        kwSection.innerHTML = `<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:8px">Keywords (${detail.keywords_count || 0})</div>${chips}`;
+      }
+    }
+  } catch (e) {
+    msg.textContent = `✗ ${e.message}`;
+    msg.style.color = 'var(--danger, #ef4444)';
+    msg.style.display = 'block';
+  } finally {
+    btn.innerHTML = orig;
+    btn.disabled = false;
+  }
+}
+
+async function moviePanelComputeSim(movieId) {
+  const btn = document.getElementById('movie-panel-btn-sim');
+  const msg = document.getElementById('movie-panel-action-msg');
+  if (!btn) return;
+  const orig = btn.innerHTML;
+  btn.innerHTML = '⟳ Computing…';
+  btn.disabled = true;
+  msg.style.display = 'none';
+  try {
+    const data = await api(`/admin/movies/${movieId}/compute-similarities`, { method: 'POST' });
+    if (!data) return;
+    msg.textContent = `✓ ${data.similar_movies_count} similar movies computed`;
+    msg.style.color = 'var(--success, #22c55e)';
+    msg.style.display = 'block';
+    // Re-render just the similar movies section
+    const detail = await api(`/admin/movies/${movieId}/detail`);
+    if (detail) {
+      const similar = detail.similar_movies || [];
+      const simSection = document.getElementById('movie-panel-sim-section');
+      if (simSection) {
+        const sim10   = similar.slice(0, 10);
+        const simRest = similar.slice(10);
+        const simLine = s => `<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">
+          ${esc(s.title)}${s.year ? ` (${s.year})` : ''} —
+          <strong style="color:var(--text-primary)">${Math.round((s.similarity || 0) * 100)}%</strong> match
+          · ${(s.shared_raters || 0).toLocaleString()} shared raters
+        </div>`;
+        const simHTML = similar.length === 0
+          ? `<div style="font-size:13px;color:var(--text-muted)">Similarities not yet computed</div>`
+          : `${sim10.map(simLine).join('')}${simRest.length ? `
+            <div id="movie-panel-sim-expand" style="margin-top:6px">
+              <button class="btn btn-ghost btn-sm" onclick="
+                document.getElementById('movie-panel-sim-more').style.display='block';
+                document.getElementById('movie-panel-sim-expand').style.display='none'">
+                Show all ${similar.length} →
+              </button>
+            </div>
+            <div id="movie-panel-sim-more" style="display:none">${simRest.map(simLine).join('')}</div>` : ''}`;
+        simSection.innerHTML = `<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:8px">Similar Movies (${detail.similar_movies_count || 0} computed)</div>${simHTML}`;
+      }
+    }
+  } catch (e) {
+    msg.textContent = `✗ ${e.message}`;
+    msg.style.color = 'var(--danger, #ef4444)';
+    msg.style.display = 'block';
+  } finally {
+    btn.innerHTML = orig;
+    btn.disabled = false;
+  }
+}
