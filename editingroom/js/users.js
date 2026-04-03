@@ -1043,7 +1043,7 @@ async function panelChangeRole() {
 async function panelGrantInvites(count) {
   if (!_panelUser) return;
   try {
-    const res = await api(`/admin/users/${_panelUser.id}/grant-invites?count=${count}`, { method: 'POST' });
+    const res = await api(`/admin/users/${_panelUser.id}/grant-invites?count=${count}`, { method: 'POST', body: '{}' });
     const newTotal = res.invites_remaining;
     _panelUser.invites_remaining = newTotal;
     if (_userAdminCache[_panelUser.username]) _userAdminCache[_panelUser.username].invites_remaining = newTotal;
