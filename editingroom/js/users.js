@@ -772,6 +772,29 @@ function renderUserPanel(u) {
         </div>
       </div>
 
+      <!-- Invites -->
+      <div class="panel-section">
+        <div class="panel-section-title">Invites</div>
+        <div class="pf-row">
+          <div class="pf-label">Invites Remaining</div>
+          <div class="pf-val-wrap">
+            <span class="pf-val" id="panel-invites-remaining">${u.invites_remaining ?? 0}</span>
+          </div>
+        </div>
+        <div class="pf-row">
+          <div class="pf-label">Invited By</div>
+          <div class="pf-val-wrap">
+            <span class="pf-val" style="color:var(--text-muted)">${u.invited_by || '—'}</span>
+          </div>
+        </div>
+        <div class="panel-actions" style="margin-top:8px">
+          <div class="panel-action-row">
+            <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="panelGrantInvites(5)">+ Grant 5 Invites</button>
+            <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="panelGrantInvites(10)">+ Grant 10 Invites</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Recommendations -->
       <div class="panel-section">
         <div class="panel-section-title">Recommendations</div>
@@ -1015,6 +1038,21 @@ async function panelChangeRole() {
       }
     },
   });
+}
+
+async function panelGrantInvites(count) {
+  if (!_panelUser) return;
+  try {
+    const res = await api(`/admin/users/${_panelUser.id}/grant-invites?count=${count}`, { method: 'POST' });
+    const newTotal = res.invites_remaining;
+    _panelUser.invites_remaining = newTotal;
+    if (_userAdminCache[_panelUser.username]) _userAdminCache[_panelUser.username].invites_remaining = newTotal;
+    const el = document.getElementById('panel-invites-remaining');
+    if (el) el.textContent = newTotal;
+    toast(`Granted ${count} invites — now ${newTotal} total`, 'success');
+  } catch (e) {
+    toast('Failed to grant invites: ' + (e.message || e), 'error');
+  }
 }
 
 async function panelVerifyEmail() {
